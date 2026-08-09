@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion, useMotionValue } from 'framer-motion';
 import { updateItemPosition } from './api/itemApi';
+import { socket } from './socket';
 import './index.css';
 
 const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick }) => {
@@ -28,7 +29,22 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick })
   const x = useMotionValue(startX);
   const y = useMotionValue(startY);
 
-  // Sync motion values if dbPosition loads late
+  // Lắng nghe tín hiệu Real-time từ các client khác
+  useEffect(() => {
+    const handleItemMoved = (data) => {
+      if (data.label === label) {
+        x.set(data.x);
+        y.set(data.y);
+      }
+    };
+
+    socket.on('item_moved', handleItemMoved);
+    return () => {
+      socket.off('item_moved', handleItemMoved);
+    };
+  }, [label, x, y]);
+
+  // Đồng bộ ban đầu nếu fetch data về trễ
   useEffect(() => {
     if (dbPosition) {
       x.set(dbPosition.x);
@@ -36,14 +52,22 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick })
     }
   }, [dbPosition, x, y]);
 
+  const handleDrag = (event, info) => {
+    // Phát chùm sự kiện đang kéo qua Socket.IO
+    socket.emit('item_dragging', { label, x: x.get(), y: y.get() });
+  };
+
   const handleDragEnd = async () => {
     const finalX = x.get();
     const finalY = y.get();
     
-    // Save locally for instant feedback on reload
+    // Lưu tạm máy mình
     localStorage.setItem(storageKey, JSON.stringify({ x: finalX, y: finalY }));
     
-    // Save to Database (online sync)
+    // Bắn một lần cuối qua socket
+    socket.emit('item_dragging', { label, x: finalX, y: finalY });
+    
+    // Lưu cứng lên Database
     try {
       await updateItemPosition(label, finalX, finalY);
     } catch (e) {
@@ -59,6 +83,7 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick })
       whileTap={{ cursor: 'grabbing', scale: 0.9 }}
       whileHover={{ scale: 1.1, filter: 'drop-shadow(0px 0px 10px rgba(255,255,255,0.8))' }}
       onClick={onClick}
+      onDrag={handleDrag}
       onDragEnd={handleDragEnd}
       className="draggable-item-2d"
     >

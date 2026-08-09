@@ -9,6 +9,7 @@ import { getPhoneMessages, addPhoneMessage, updatePhoneMessage, deletePhoneMessa
 import { getMusic, addMusic, updateMusic, deleteMusic } from './api/musicApi';
 import { uploadFile } from './api/uploadApi';
 import { getAllItems } from './api/itemApi';
+import { socket } from './socket';
 import './index.css';
 
 const MainRoom = () => {
@@ -35,6 +36,13 @@ const MainRoom = () => {
 
   useEffect(() => {
     fetchAllData();
+    
+    // Khởi động kết nối Socket.IO
+    socket.connect();
+    
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   const fetchAllData = async () => {

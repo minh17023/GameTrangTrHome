@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import http from 'http';
+import { Server } from 'socket.io';
 import rootRouter from './routes/index.js';
 import { supabase } from './config/db.js';
 
@@ -19,7 +21,30 @@ app.get('/', (req, res) => {
   res.send('Hello Kitty Backend API is running!');
 });
 
-app.listen(PORT, async () => {
+// Setup Socket.IO
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE']
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('A user connected:', socket.id);
+
+  socket.on('item_dragging', (data) => {
+    // data: { label: "Tủ Lạnh", x: 100, y: 200 }
+    // Phát tọa độ cho TẤT CẢ client khác TRỪ client đang gửi
+    socket.broadcast.emit('item_moved', data);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+server.listen(PORT, async () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   
   // Kiểm tra kết nối Supabase
