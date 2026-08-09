@@ -40,7 +40,36 @@ const MainRoom = () => {
     // Khởi động kết nối Socket.IO
     socket.connect();
     
+    const handleDataChanged = (data) => {
+      if (data.type === 'fridge') getFridgeItems().then(setFridgeItems);
+      if (data.type === 'movie') getMovies().then(setMovies);
+      if (data.type === 'phone') getPhoneMessages().then(setVoiceMessages);
+      if (data.type === 'music') getMusic().then(setMusicList);
+      if (data.type === 'letter') getLetter().then(l => setLetterContent(l?.content || ""));
+    };
+
+    const handleMusicAction = (data) => {
+      if (data.action === 'play') {
+        setCurrentTrack(data.track);
+        setIsPlaying(true);
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.src = data.track.url;
+            audioRef.current.play();
+          }
+        }, 100);
+      } else if (data.action === 'pause') {
+        if (audioRef.current) audioRef.current.pause();
+        setIsPlaying(false);
+      }
+    };
+
+    socket.on('data_changed', handleDataChanged);
+    socket.on('music_action', handleMusicAction);
+    
     return () => {
+      socket.off('data_changed', handleDataChanged);
+      socket.off('music_action', handleMusicAction);
       socket.disconnect();
     };
   }, []);
@@ -77,7 +106,10 @@ const MainRoom = () => {
   // ---- LETTER ----
   const saveLetter = async (content) => {
     setLetterContent(content);
-    try { await updateLetter(content); } catch (err) {}
+    try { 
+      await updateLetter(content); 
+      socket.emit('data_changed', { type: 'letter' });
+    } catch (err) {}
   };
 
   // ---- FRIDGE ----
@@ -85,7 +117,10 @@ const MainRoom = () => {
     if (!newFood.trim()) return;
     try {
       const added = await addFridgeItem(newFood);
-      if (added) setFridgeItems([...fridgeItems, added]);
+      if (added) {
+        setFridgeItems([...fridgeItems, added]);
+        socket.emit('data_changed', { type: 'fridge' });
+      }
       setNewFood("");
     } catch (err) {}
   };
@@ -94,12 +129,14 @@ const MainRoom = () => {
     if (newName && newName.trim() !== "") {
       const updated = await updateFridgeItem(item.id, newName);
       setFridgeItems(fridgeItems.map(f => f.id === item.id ? updated : f));
+      socket.emit('data_changed', { type: 'fridge' });
     }
   };
   const handleDeleteFood = async (id) => {
     if (window.confirm("Bạn có chắc muốn xóa món này?")) {
       await deleteFridgeItem(id);
       setFridgeItems(fridgeItems.filter(f => f.id !== id));
+      socket.emit('data_changed', { type: 'fridge' });
     }
   };
 
@@ -111,7 +148,10 @@ const MainRoom = () => {
     const time = prompt("Giờ chiếu (VD: 20:00):");
     if (title && date && time) {
       const added = await addMovie(title, time, date);
-      if (added) setMovies([added, ...movies]);
+      if (added) {
+        setMovies([added, ...movies]);
+        socket.emit('data_changed', { type: 'movie' });
+      }
     }
   };
   const handleEditMovie = async (item) => {
@@ -122,12 +162,14 @@ const MainRoom = () => {
     if (title && date && time) {
       const updated = await updateMovie(item.id, title, time, date);
       setMovies(movies.map(m => m.id === item.id ? updated : m));
+      socket.emit('data_changed', { type: 'movie' });
     }
   };
   const handleDeleteMovie = async (id) => {
     if (window.confirm("Xóa vé phim này?")) {
       await deleteMovie(id);
       setMovies(movies.filter(m => m.id !== id));
+      socket.emit('data_changed', { type: 'movie' });
     }
   };
 
@@ -146,6 +188,7 @@ const MainRoom = () => {
           const res = await uploadFile(file);
           const added = await addPhoneMessage(title, res.url);
           setVoiceMessages([added, ...voiceMessages]);
+          socket.emit('data_changed', { type: 'phone' });
           alert("Thêm tin nhắn thành công!");
         } catch (err) { alert("Lỗi tải lên!"); }
       }
@@ -157,12 +200,14 @@ const MainRoom = () => {
     if (title) {
       const updated = await updatePhoneMessage(item.id, title, item.audio_url);
       setVoiceMessages(voiceMessages.map(m => m.id === item.id ? updated : m));
+      socket.emit('data_changed', { type: 'phone' });
     }
   };
   const handleDeletePhone = async (id) => {
     if (window.confirm("Xóa lời nhắn này?")) {
       await deletePhoneMessage(id);
       setVoiceMessages(voiceMessages.filter(m => m.id !== id));
+      socket.emit('data_changed', { type: 'phone' });
     }
   };
 
@@ -197,6 +242,7 @@ const MainRoom = () => {
           ]);
           const added = await addMusic(title, audioRes.url, imageRes.url);
           setMusicList([added, ...musicList]);
+          socket.emit('data_changed', { type: 'music' });
           alert("Thêm bài hát thành công!");
         } catch (err) { alert("Lỗi upload!"); }
       };
@@ -209,9 +255,11 @@ const MainRoom = () => {
     if (window.confirm("Xóa bài nhạc này?")) {
       await deleteMusic(id);
       setMusicList(musicList.filter(m => m.id !== id));
+      socket.emit('data_changed', { type: 'music' });
       if (currentTrack?.id === id) {
         setCurrentTrack(null);
         setIsPlaying(false);
+        socket.emit('music_action', { action: 'pause' });
       }
     }
   };
@@ -221,15 +269,18 @@ const MainRoom = () => {
       if (isPlaying) {
         audioRef.current.pause();
         setIsPlaying(false);
+        socket.emit('music_action', { action: 'pause' });
       } else {
         audioRef.current.play();
         setIsPlaying(true);
+        socket.emit('music_action', { action: 'play', track });
       }
     } else {
       setCurrentTrack(track);
       setIsPlaying(true);
       setTimeout(() => {
         if (audioRef.current) audioRef.current.play();
+        socket.emit('music_action', { action: 'play', track });
       }, 100);
     }
   };

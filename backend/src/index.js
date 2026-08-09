@@ -39,6 +39,16 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('item_moved', data);
   });
 
+  socket.on('data_changed', (data) => {
+    // data: { type: "fridge" | "movie" | "letter" | "phone" | "music" }
+    socket.broadcast.emit('data_changed', data);
+  });
+
+  socket.on('music_action', (data) => {
+    // data: { action: "play" | "pause", track: track_obj }
+    socket.broadcast.emit('music_action', data);
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
