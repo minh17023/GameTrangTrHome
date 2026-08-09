@@ -7,21 +7,28 @@ import './index.css';
 const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick }) => {
   const storageKey = `pos_${label}`;
   
+  // Convert absolute pixels to percentage if it's old data
+  const parseCoord = (val, max, isX) => {
+    if (val == null) return val;
+    // If it's already a percentage (0.0 -> 1.0)
+    if (val <= 1.2 && val >= -0.2) return val * max;
+    // If it's old pixel data, assume old screen was 1200x800
+    return (val / (isX ? 1200 : 800)) * max;
+  };
+
   let startX = initialX;
   let startY = initialY;
   
-  // 1. Prefer database position if available
   if (dbPosition) {
-    startX = dbPosition.x;
-    startY = dbPosition.y;
+    startX = parseCoord(dbPosition.x, window.innerWidth, true);
+    startY = parseCoord(dbPosition.y, window.innerHeight, false);
   } else {
-    // 2. Fallback to local storage
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        startX = parsed.x;
-        startY = parsed.y;
+        startX = parseCoord(parsed.x, window.innerWidth, true);
+        startY = parseCoord(parsed.y, window.innerHeight, false);
       } catch(e) {}
     }
   }
@@ -29,12 +36,28 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick })
   const x = useMotionValue(startX);
   const y = useMotionValue(startY);
 
-  // Lắng nghe tín hiệu Real-time từ các client khác
+  // Resize handler to keep items in relative positions
+  useEffect(() => {
+    const handleResize = () => {
+      // Only adjust if we have a valid previous width
+      const curX = x.get();
+      const curY = y.get();
+      // Estimate percentage from current window sizes
+      // This is an approximation since window is resizing, but it keeps things fluid
+      const pctX = curX / window.innerWidth;
+      const pctY = curY / window.innerHeight;
+      x.set(pctX * window.innerWidth);
+      y.set(pctY * window.innerHeight);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [x, y]);
+
   useEffect(() => {
     const handleItemMoved = (data) => {
       if (data.label === label) {
-        x.set(data.x);
-        y.set(data.y);
+        x.set(parseCoord(data.x, window.innerWidth, true));
+        y.set(parseCoord(data.y, window.innerHeight, false));
       }
     };
 
@@ -44,32 +67,28 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick })
     };
   }, [label, x, y]);
 
-  // Đồng bộ ban đầu nếu fetch data về trễ
   useEffect(() => {
     if (dbPosition) {
-      x.set(dbPosition.x);
-      y.set(dbPosition.y);
+      x.set(parseCoord(dbPosition.x, window.innerWidth, true));
+      y.set(parseCoord(dbPosition.y, window.innerHeight, false));
     }
   }, [dbPosition, x, y]);
 
   const handleDrag = (event, info) => {
-    // Phát chùm sự kiện đang kéo qua Socket.IO
-    socket.emit('item_dragging', { label, x: x.get(), y: y.get() });
+    const pctX = x.get() / window.innerWidth;
+    const pctY = y.get() / window.innerHeight;
+    socket.emit('item_dragging', { label, x: pctX, y: pctY });
   };
 
   const handleDragEnd = async () => {
-    const finalX = x.get();
-    const finalY = y.get();
+    const pctX = x.get() / window.innerWidth;
+    const pctY = y.get() / window.innerHeight;
     
-    // Lưu tạm máy mình
-    localStorage.setItem(storageKey, JSON.stringify({ x: finalX, y: finalY }));
+    localStorage.setItem(storageKey, JSON.stringify({ x: pctX, y: pctY }));
+    socket.emit('item_dragging', { label, x: pctX, y: pctY });
     
-    // Bắn một lần cuối qua socket
-    socket.emit('item_dragging', { label, x: finalX, y: finalY });
-    
-    // Lưu cứng lên Database
     try {
-      await updateItemPosition(label, finalX, finalY);
+      await updateItemPosition(label, pctX, pctY);
     } catch (e) {
       console.log("Không thể lưu vị trí lên Server", e);
     }
