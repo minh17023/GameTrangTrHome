@@ -96,7 +96,22 @@ const MainRoom = () => {
       if (fridge) setFridgeItems(fridge);
       if (movieList) setMovies(movieList);
       if (phone) setVoiceMessages(phone);
-      if (music) setMusicList(music);
+      if (music) {
+        setMusicList(music);
+        // Autoplay bài hát đầu tiên khi vừa vào phòng
+        if (music.length > 0) {
+          setCurrentTrack(music[0]);
+          setIsPlaying(true);
+          setTimeout(() => {
+            if (audioRef.current) {
+              audioRef.current.play().catch((err) => {
+                console.log("Trình duyệt chặn Autoplay:", err);
+                setIsPlaying(false);
+              });
+            }
+          }, 500);
+        }
+      }
       
       if (itemsData && Array.isArray(itemsData)) {
         const positions = {};
