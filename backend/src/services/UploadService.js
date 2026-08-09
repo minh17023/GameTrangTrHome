@@ -7,7 +7,9 @@ class UploadService {
 
     // Tạo tên file độc nhất để không bị trùng
     const ext = file.originalname.split('.').pop();
-    const fileName = `${crypto.randomUUID()}.${ext}`;
+    const isAudio = file.mimetype.startsWith('audio/');
+    const folder = isAudio ? 'music' : 'images';
+    const fileName = `${folder}/${crypto.randomUUID()}.${ext}`;
 
     const { data, error } = await supabase.storage
       .from('media')

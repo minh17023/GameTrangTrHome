@@ -5,11 +5,23 @@ class MusicService {
     return await MusicRepository.getMusic();
   }
 
-  async updateMusic(url) {
-    if (typeof url !== 'string' || !url.trim()) {
-      throw new Error('Đường dẫn nhạc không hợp lệ');
+  async addMusic(title, url, cover_url) {
+    if (!title || !url || !cover_url) {
+      throw new Error('Thiếu thông tin bài hát (title, url, cover_url)');
     }
-    return await MusicRepository.updateMusic(url.trim());
+    return await MusicRepository.addMusic(title, url, cover_url);
+  }
+
+  async updateMusic(id, title, url, cover_url) {
+    if (!id || !title || !url || !cover_url) {
+      throw new Error('Thiếu thông tin cập nhật bài hát');
+    }
+    return await MusicRepository.updateMusic(id, title, url, cover_url);
+  }
+
+  async deleteMusic(id) {
+    if (!id) throw new Error('Thiếu ID bài hát để xóa');
+    return await MusicRepository.deleteMusic(id);
   }
 }
 
