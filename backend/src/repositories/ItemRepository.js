@@ -7,11 +7,10 @@ class ItemRepository {
     return data;
   }
 
-  async updateItemPosition(id, x, y) {
+  async updateItemPosition(label, x, y) {
     const { data, error } = await supabase
       .from('items')
-      .update({ position_x: x, position_y: y })
-      .eq('id', id);
+      .upsert({ label, position_x: x, position_y: y }, { onConflict: 'label' });
     if (error) throw error;
     return data;
   }

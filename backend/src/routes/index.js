@@ -5,6 +5,7 @@ import phoneRoutes from './phoneRoutes.js';
 import musicRoutes from './musicRoutes.js';
 import letterRoutes from './letterRoutes.js';
 import uploadRoutes from './uploadRoutes.js';
+import itemRoutes from './itemRoutes.js';
 
 const router = express.Router();
 
@@ -14,5 +15,6 @@ router.use('/phone', phoneRoutes);
 router.use('/music', musicRoutes);
 router.use('/letters', letterRoutes);
 router.use('/upload', uploadRoutes);
+router.use('/items', itemRoutes);
 
 export default router;

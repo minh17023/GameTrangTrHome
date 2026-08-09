@@ -8,6 +8,7 @@ import { getMovies, addMovie, updateMovie, deleteMovie } from './api/movieApi';
 import { getPhoneMessages, addPhoneMessage, updatePhoneMessage, deletePhoneMessage } from './api/phoneApi';
 import { getMusic, addMusic, updateMusic, deleteMusic } from './api/musicApi';
 import { uploadFile } from './api/uploadApi';
+import { getAllItems } from './api/itemApi';
 import './index.css';
 
 const MainRoom = () => {
@@ -25,6 +26,8 @@ const MainRoom = () => {
   const [voiceMessages, setVoiceMessages] = useState([]);
   const [musicList, setMusicList] = useState([]);
   
+  const [itemPositions, setItemPositions] = useState({});
+  
   // Music Player State
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -36,12 +39,13 @@ const MainRoom = () => {
 
   const fetchAllData = async () => {
     try {
-      const [letter, fridge, movieList, phone, music] = await Promise.all([
+      const [letter, fridge, movieList, phone, music, itemsData] = await Promise.all([
         getLetter().catch(() => null),
         getFridgeItems().catch(() => []),
         getMovies().catch(() => []),
         getPhoneMessages().catch(() => []),
-        getMusic().catch(() => [])
+        getMusic().catch(() => []),
+        getAllItems().catch(() => [])
       ]);
 
       if (letter?.content) setLetterContent(letter.content);
@@ -49,6 +53,14 @@ const MainRoom = () => {
       if (movieList) setMovies(movieList);
       if (phone) setVoiceMessages(phone);
       if (music) setMusicList(music);
+      
+      if (itemsData && Array.isArray(itemsData)) {
+        const positions = {};
+        itemsData.forEach(item => {
+          positions[item.label] = { x: item.position_x, y: item.position_y };
+        });
+        setItemPositions(positions);
+      }
     } catch (err) {
       console.log("Error loading data", err);
     }
@@ -240,24 +252,24 @@ const MainRoom = () => {
       {/* Living Room Items */}
       {currentFloor === 'living' && (
         <>
-          <DraggableItem icon="🧊" label="Tủ Lạnh" initialX={800} initialY={200} onClick={() => setActiveModal("Tủ Lạnh")} />
-          <DraggableItem icon="📱" label="Điện Thoại" initialX={700} initialY={500} onClick={() => setActiveModal("Điện Thoại")} />
-          <DraggableItem icon="🐱" label="Bé Mèo" initialX={450} initialY={600} onClick={() => alert("Meow~")} />
+          <DraggableItem icon="🧊" label="Tủ Lạnh" initialX={800} initialY={200} dbPosition={itemPositions["Tủ Lạnh"]} onClick={() => setActiveModal("Tủ Lạnh")} />
+          <DraggableItem icon="📱" label="Điện Thoại" initialX={700} initialY={500} dbPosition={itemPositions["Điện Thoại"]} onClick={() => setActiveModal("Điện Thoại")} />
+          <DraggableItem icon="🐱" label="Bé Mèo" initialX={450} initialY={600} dbPosition={itemPositions["Bé Mèo"]} onClick={() => alert("Meow~")} />
         </>
       )}
 
       {/* Bedroom Items */}
       {currentFloor === 'bedroom' && (
         <>
-          <DraggableItem icon="💌" label="Hòm Thư" initialX={400} initialY={500} onClick={() => setActiveModal("Thư")} />
-          <DraggableItem icon="🎧" label="Máy Nghe Nhạc" initialX={700} initialY={600} onClick={() => setActiveModal("Máy Nghe Nhạc")} />
+          <DraggableItem icon="💌" label="Hòm Thư" initialX={400} initialY={500} dbPosition={itemPositions["Hòm Thư"]} onClick={() => setActiveModal("Thư")} />
+          <DraggableItem icon="🎧" label="Máy Nghe Nhạc" initialX={700} initialY={600} dbPosition={itemPositions["Máy Nghe Nhạc"]} onClick={() => setActiveModal("Máy Nghe Nhạc")} />
         </>
       )}
 
       {/* Rooftop Items */}
       {currentFloor === 'rooftop' && (
         <>
-          <DraggableItem icon="🎟️" label="Vé Xem Phim" initialX={400} initialY={350} onClick={() => setActiveModal("Vé Xem Phim")} />
+          <DraggableItem icon="🎟️" label="Vé Xem Phim" initialX={400} initialY={350} dbPosition={itemPositions["Vé Xem Phim"]} onClick={() => setActiveModal("Vé Xem Phim")} />
         </>
       )}
 

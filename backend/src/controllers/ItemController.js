@@ -12,9 +12,9 @@ class ItemController {
 
   async updateItemPosition(req, res) {
     try {
-      const { id } = req.params;
+      const { label } = req.params;
       const { x, y } = req.body;
-      const updatedItem = await ItemService.updateItemPosition(id, x, y);
+      const updatedItem = await ItemService.updateItemPosition(label, x, y);
       res.status(200).json(updatedItem);
     } catch (error) {
       res.status(500).json({ error: error.message });

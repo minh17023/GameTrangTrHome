@@ -9,9 +9,9 @@ class ItemService {
     }
   }
 
-  async updateItemPosition(id, x, y) {
+  async updateItemPosition(label, x, y) {
     try {
-      return await ItemRepository.updateItemPosition(id, x, y);
+      return await ItemRepository.updateItemPosition(label, x, y);
     } catch (error) {
       throw new Error('Error updating item position: ' + error.message);
     }
