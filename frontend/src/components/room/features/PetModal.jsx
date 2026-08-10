@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../../common/Modal';
 import { toast } from 'react-hot-toast';
 import { adoptPet, interactPet, recoverStreak, equipAccessory, toggleSleep } from '../../../api/petApi';
+import { soundFx } from '../../../utils/audioUtils';
 
 const PetModal = ({ isOpen, onClose, user, socket, pet, setPet }) => {
   const [tab, setTab] = useState('interact'); // 'interact' | 'wardrobe'
@@ -20,10 +21,11 @@ const PetModal = ({ isOpen, onClose, user, socket, pet, setPet }) => {
       setPet(updatedPet);
       if (newState) {
         toast.success("Bé đã đi ngủ 🌙");
+        soundFx.playSleep();
       } else {
         toast.success("Đã đánh thức bé ☀️");
+        soundFx.playWake();
       }
-      socket.emit('data_changed', { type: 'pet_floor_changed', floor: 'living', roomId: user?.room_id }); // Just to trigger a sync broadcast
     } catch (e) {
       toast.error(e.message || "Lỗi thay đổi trạng thái");
     }
@@ -58,9 +60,20 @@ const PetModal = ({ isOpen, onClose, user, socket, pet, setPet }) => {
       setPet(updatedPet);
       
       let msg = '';
-      if (action === 'feed') msg = 'Bạn vừa cho bé ăn 🍖';
-      if (action === 'play') msg = 'Bé rất vui vì được chơi đùa 🧶';
-      if (action === 'pet') msg = 'Bé thích được vuốt ve 🥰';
+      if (action === 'feed') {
+        msg = 'Bạn vừa cho bé ăn 🍖';
+        soundFx.playFeed();
+      }
+      if (action === 'play') {
+        msg = 'Bé rất vui vì được chơi đùa 🧶';
+        soundFx.playPlay();
+      }
+      if (action === 'pet') {
+        msg = 'Bé thích được vuốt ve 🥰';
+        if (pet?.type === 'dog') soundFx.playBark();
+        else soundFx.playMeow();
+        setTimeout(() => soundFx.playPet(), 500); // Purr after meow
+      }
       toast.success(msg);
       
       // Hiệu ứng tương tác

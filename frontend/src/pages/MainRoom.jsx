@@ -27,6 +27,7 @@ import MusicPlayerModal from '../components/room/features/MusicPlayerModal';
 import PhotoAlbumModal from '../components/room/features/PhotoAlbumModal';
 import TVModal from '../components/room/features/TVModal';
 import PetModal from '../components/room/features/PetModal';
+import { soundFx } from '../utils/audioUtils';
 
 const MainRoom = () => {
   const { user, logout, setUser } = useContext(AuthContext);
@@ -180,11 +181,28 @@ const MainRoom = () => {
       if (data.senderId === user.id) return;
 
       let actionName = 'vừa tương tác với bé';
-      if (data.action === 'feed') actionName = 'vừa cho bé ăn 🍖';
-      if (data.action === 'play') actionName = 'vừa chơi đùa với bé 🧶';
-      if (data.action === 'pet') actionName = 'vừa vuốt ve bé 🥰';
-      if (data.action === 'sleep') actionName = 'vừa cho bé đi ngủ 🌙';
-      if (data.action === 'wake') actionName = 'vừa đánh thức bé ☀️';
+      if (data.action === 'feed') {
+        actionName = 'vừa cho bé ăn 🍖';
+        soundFx.playFeed();
+      }
+      if (data.action === 'play') {
+        actionName = 'vừa chơi đùa với bé 🧶';
+        soundFx.playPlay();
+      }
+      if (data.action === 'pet') {
+        actionName = 'vừa vuốt ve bé 🥰';
+        if (data.pet?.type === 'dog') soundFx.playBark();
+        else soundFx.playMeow();
+        setTimeout(() => soundFx.playPet(), 500);
+      }
+      if (data.action === 'sleep') {
+        actionName = 'vừa cho bé đi ngủ 🌙';
+        soundFx.playSleep();
+      }
+      if (data.action === 'wake') {
+        actionName = 'vừa đánh thức bé ☀️';
+        soundFx.playWake();
+      }
       toast(`Nửa kia ${actionName}!`, { icon: '🐾' });
     };
 
@@ -235,6 +253,47 @@ const MainRoom = () => {
       socket.disconnect();
     };
   }, [user?.id, user?.room_id]);
+
+  // Pet hunger notification check
+  useEffect(() => {
+    if (!pet) return;
+
+    const checkHunger = () => {
+      const today = new Date().toISOString().split('T')[0];
+      const hasBeenFedToday = pet.accessories?.some(a => a.endsWith(`_feed_${today}`));
+      
+      if (!hasBeenFedToday) {
+        toast('Meo meo! Bé đang đói bụng kìa, nhớ cho bé ăn nha! 😿🍖', {
+          icon: '🚨',
+          duration: 6000,
+          style: { border: '2px solid #ff7675', padding: '16px' }
+        });
+      }
+    };
+
+    // Check once per session/day on load
+    const lastCheck = sessionStorage.getItem('last_hunger_check');
+    const today = new Date().toISOString().split('T')[0];
+    if (lastCheck !== today) {
+      setTimeout(checkHunger, 3000); // Show notification 3s after load
+      sessionStorage.setItem('last_hunger_check', today);
+    }
+
+    // Also check every 1 hour if tab is left open
+    const interval = setInterval(() => {
+      const currentToday = new Date().toISOString().split('T')[0];
+      const hasBeenFedToday = pet.accessories?.some(a => a.endsWith(`_feed_${currentToday}`));
+      if (!hasBeenFedToday) {
+        toast('Đã lâu rồi bé chưa được ăn! Nhớ cho bé ăn nhé! 😿🍖', {
+          icon: '⏰',
+          duration: 6000,
+          style: { border: '2px solid #ff7675', padding: '16px' }
+        });
+      }
+    }, 3600000); // 1 hour
+
+    return () => clearInterval(interval);
+  }, [pet]);
 
   const fetchAllData = async () => {
     try {
