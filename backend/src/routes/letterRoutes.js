@@ -3,7 +3,8 @@ import LetterController from '../controllers/LetterController.js';
 
 const router = express.Router();
 
-router.get('/', LetterController.getLetter);
-router.put('/', LetterController.updateLetter);
+router.get('/', LetterController.getLetters);
+router.post('/', LetterController.createLetter);
+router.put('/:id/read', LetterController.markAsRead);
 
 export default router;

@@ -1,15 +1,20 @@
 import LetterRepository from '../repositories/LetterRepository.js';
 
 class LetterService {
-  async getLetter() {
-    return await LetterRepository.getLetter();
+  async getLetters() {
+    return await LetterRepository.getLetters();
   }
 
-  async updateLetter(content) {
+  async createLetter(content, senderId) {
     if (typeof content !== 'string') {
       throw new Error('Nội dung thư không hợp lệ');
     }
-    return await LetterRepository.updateLetter(content);
+    return await LetterRepository.createLetter(content, senderId);
+  }
+
+  async markAsRead(letterId) {
+    if (!letterId) throw new Error('Thiếu ID thư');
+    return await LetterRepository.markAsRead(letterId);
   }
 }
 

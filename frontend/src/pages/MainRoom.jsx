@@ -4,7 +4,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import DraggableItem from '../components/common/DraggableItem';
 import Modal from '../components/common/Modal';
 import HelloKittyNPC from '../components/room/HelloKittyNPC';
-import { getLetter, updateLetter } from '../api/letterApi';
+import { getLetters, createLetter, markLetterAsRead } from '../api/letterApi';
 import { getFridgeItems, addFridgeItem, updateFridgeItem, deleteFridgeItem } from '../api/fridgeApi';
 import { getMovies, addMovie, updateMovie, deleteMovie } from '../api/movieApi';
 import { getPhoneMessages, addPhoneMessage, updatePhoneMessage, deletePhoneMessage } from '../api/phoneApi';
@@ -32,6 +32,9 @@ const MainRoom = () => {
   const [newFood, setNewFood] = useState("");
 
   const [movies, setMovies] = useState([]);
+  const [isMovieFormOpen, setIsMovieFormOpen] = useState(false);
+  const [movieForm, setMovieForm] = useState({ id: null, title: '', date: '', time: '' });
+  
   const [voiceMessages, setVoiceMessages] = useState([]);
   const [musicList, setMusicList] = useState([]);
   
@@ -41,6 +44,11 @@ const MainRoom = () => {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef(null);
+
+  const [letters, setLetters] = useState([]);
+  const [letterViewMode, setLetterViewMode] = useState('list');
+  const [selectedLetter, setSelectedLetter] = useState(null);
+  const [newLetterContent, setNewLetterContent] = useState("");
 
   // Music Form State
   const [isUploadingMusic, setIsUploadingMusic] = useState(false);
@@ -122,9 +130,11 @@ const MainRoom = () => {
         getMusic().then(setMusicList);
         toast('Nửa kia vừa cập nhật danh sách Nhạc! 🎧', { icon: '🧑‍🤝‍🧑' });
       }
-      if (data.type === 'letter') {
-        getLetter().then(l => setLetterContent(l?.content || ""));
-        toast('Bạn có thư mới từ người ấy! 💌', { icon: '🧑‍🤝‍🧑', duration: 5000 });
+      if (data.type === 'letter' || data.type === 'letter_read') {
+        getLetters().then(setLetters);
+        if (data.type === 'letter') {
+          toast('Bạn có thư mới từ người ấy! 💌', { icon: '🧑‍🤝‍🧑', duration: 5000 });
+        }
       }
     };
 
@@ -164,8 +174,8 @@ const MainRoom = () => {
 
   const fetchAllData = async () => {
     try {
-      const [letter, fridge, movieList, phone, music, itemsData, partnerData] = await Promise.all([
-        getLetter().catch(() => null),
+      const [fetchedLetters, fridge, movieList, phone, music, itemsData, partnerData] = await Promise.all([
+        getLetters().catch(() => []),
         getFridgeItems().catch(() => []),
         getMovies().catch(() => []),
         getPhoneMessages().catch(() => []),
@@ -174,7 +184,7 @@ const MainRoom = () => {
         getPartner().catch(() => null)
       ]);
 
-      if (letter?.content) setLetterContent(letter.content);
+      if (fetchedLetters) setLetters(fetchedLetters);
       if (fridge) setFridgeItems(fridge);
       if (movieList) setMovies(movieList);
       if (phone) setVoiceMessages(phone);
@@ -209,12 +219,28 @@ const MainRoom = () => {
   };
 
   // ---- LETTER ----
-  const saveLetter = async (content) => {
-    setLetterContent(content);
+  const handleSendLetter = async () => {
+    if (!newLetterContent.trim()) return;
     try { 
-      await updateLetter(content); 
-      socket.emit('data_changed', { type: 'letter', roomId: user.room_id });
+      const added = await createLetter(newLetterContent); 
+      setLetters([added, ...letters]);
+      setNewLetterContent("");
+      setLetterViewMode('list');
+      socket.emit('data_changed', { type: 'letter', roomId: user?.room_id });
     } catch (err) {}
+  };
+
+  const handleOpenLetter = async (letter) => {
+    setSelectedLetter(letter);
+    setLetterViewMode('view');
+    if (letter.sender_id === partner?.id && !letter.is_read) {
+      const updated = await markLetterAsRead(letter.id);
+      if (updated) {
+        setLetters(letters.map(l => l.id === letter.id ? updated : l));
+        setSelectedLetter(updated);
+        socket.emit('data_changed', { type: 'letter_read', roomId: user?.room_id });
+      }
+    }
   };
 
   // ---- FRIDGE ----
@@ -246,29 +272,32 @@ const MainRoom = () => {
   };
 
   // ---- MOVIE ----
-  const handleAddMovie = async () => {
-    const title = prompt("Tên phim:");
-    if (!title) return;
-    const date = prompt("Ngày xem (VD: 14/02/2024):");
-    const time = prompt("Giờ chiếu (VD: 20:00):");
-    if (title && date && time) {
-      const added = await addMovie(title, time, date);
-      if (added) {
-        setMovies([added, ...movies]);
-        socket.emit('data_changed', { type: 'movie', roomId: user.room_id });
-      }
+  const handleOpenMovieForm = (movie = null) => {
+    if (movie) {
+      setMovieForm(movie);
+    } else {
+      setMovieForm({ id: null, title: '', date: '', time: '' });
     }
+    setIsMovieFormOpen(true);
   };
-  const handleEditMovie = async (item) => {
-    const title = prompt("Tên phim:", item.title);
-    if (!title) return;
-    const date = prompt("Ngày xem:", item.date);
-    const time = prompt("Giờ chiếu:", item.time);
-    if (title && date && time) {
-      const updated = await updateMovie(item.id, title, time, date);
-      setMovies(movies.map(m => m.id === item.id ? updated : m));
-      socket.emit('data_changed', { type: 'movie', roomId: user.room_id });
+
+  const handleSaveMovie = async () => {
+    const { id, title, date, time } = movieForm;
+    if (!title || !date || !time) {
+      toast.error('Vui lòng điền đầy đủ thông tin!');
+      return;
     }
+    try {
+      if (id) {
+        const updated = await updateMovie(id, title, time, date);
+        setMovies(movies.map(m => m.id === id ? updated : m));
+      } else {
+        const added = await addMovie(title, time, date);
+        if (added) setMovies([added, ...movies]);
+      }
+      setIsMovieFormOpen(false);
+      socket.emit('data_changed', { type: 'movie', roomId: user.room_id });
+    } catch (err) {}
   };
   const handleDeleteMovie = async (id) => {
     if (window.confirm("Xóa vé phim này?")) {
@@ -576,13 +605,69 @@ const MainRoom = () => {
         </div>
       </Modal>
 
-      <Modal isOpen={activeModal === "Thư"} onClose={() => setActiveModal(null)} title="💌 Hòm Thư">
-        <textarea 
-          className="letter-textarea" 
-          value={letterContent}
-          onChange={(e) => saveLetter(e.target.value)}
-          placeholder="Viết gì đó cho người ấy nha..."
-        />
+      <Modal isOpen={activeModal === "Thư"} onClose={() => { setActiveModal(null); setLetterViewMode('list'); }} title="💌 Hòm Thư">
+        {letterViewMode === 'list' && (
+          <div>
+            <button onClick={() => setLetterViewMode('compose')} style={{ width: '100%', padding: '10px', marginBottom: '15px', background: 'var(--pastel-pink)', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>✍️ Soạn Thư Mới</button>
+            <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {letters.length === 0 ? <p style={{textAlign: 'center', color: '#999'}}>Chưa có bức thư nào...</p> : letters.map(letter => (
+                <div 
+                  key={letter.id} 
+                  onClick={() => handleOpenLetter(letter)}
+                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #eee', cursor: 'pointer', background: !letter.is_read && letter.sender_id === partner?.id ? '#fff0f5' : '#fff', fontWeight: !letter.is_read && letter.sender_id === partner?.id ? 'bold' : 'normal' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '5px' }}>
+                    <span>Từ: {letter.sender_id === user?.id ? 'Bạn' : (partner?.display_name || 'Nửa kia')}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <span style={{ fontSize: '0.8rem', color: '#888' }}>{new Date(letter.created_at).toLocaleDateString('vi-VN')}</span>
+                      {letter.sender_id === user?.id && (
+                        <span style={{ fontSize: '0.7rem', color: letter.is_read ? '#4cd137' : '#999', marginTop: '2px' }}>
+                          {letter.is_read ? 'Đã xem' : 'Chưa xem'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#555', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {letter.content}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {letterViewMode === 'compose' && (
+          <div>
+            <textarea 
+              value={newLetterContent}
+              onChange={(e) => setNewLetterContent(e.target.value)}
+              placeholder="Viết gì đó cho người ấy nha..."
+              style={{ width: '100%', height: '200px', padding: '10px', borderRadius: '15px', border: '2px solid var(--pastel-pink)', resize: 'none' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px' }}>
+              <button onClick={() => setLetterViewMode('list')} style={{ padding: '8px 15px', background: '#ccc', border: 'none', borderRadius: '20px', cursor: 'pointer' }}>Quay lại</button>
+              <button onClick={handleSendLetter} style={{ padding: '8px 20px', background: 'var(--pastel-pink-dark)', color: 'white', border: 'none', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold' }}>Gửi Thư</button>
+            </div>
+          </div>
+        )}
+
+        {letterViewMode === 'view' && selectedLetter && (
+          <div>
+            <div style={{ padding: '15px', background: '#fff', border: '1px solid #eee', borderRadius: '10px', minHeight: '150px', whiteSpace: 'pre-wrap' }}>
+              {selectedLetter.content}
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '10px', textAlign: 'right' }}>
+              {selectedLetter.sender_id === user?.id ? (
+                <span>Gửi lúc: {new Date(selectedLetter.created_at).toLocaleString('vi-VN')} • <b style={{ color: selectedLetter.is_read ? '#4cd137' : '#999' }}>{selectedLetter.is_read ? 'Đã xem' : 'Chưa xem'}</b></span>
+              ) : (
+                <span>Nhận lúc: {new Date(selectedLetter.created_at).toLocaleString('vi-VN')}</span>
+              )}
+            </div>
+            <div style={{ marginTop: '15px' }}>
+              <button onClick={() => setLetterViewMode('list')} style={{ padding: '8px 15px', background: 'var(--pastel-pink)', border: 'none', borderRadius: '20px', cursor: 'pointer' }}>Quay lại</button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       <Modal isOpen={activeModal === "Tủ Lạnh"} onClose={() => setActiveModal(null)} title="🧊 Hôm nay ăn gì?">
@@ -601,19 +686,54 @@ const MainRoom = () => {
         </div>
       </Modal>
 
-      <Modal isOpen={activeModal === "Vé Xem Phim"} onClose={() => setActiveModal(null)} title="🎟️ Lịch sử Vé Xem Phim">
-        <button onClick={handleAddMovie} style={{ width: '100%', padding: '10px', marginBottom: '15px', background: 'var(--pastel-pink)', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>➕ Thêm Vé Mới</button>
-        {movies.map((movie, idx) => (
-          <div key={idx} className="movie-ticket" style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <div>
-              <strong>{movie.title}</strong> - {movie.time}, {movie.date}
+      <Modal isOpen={activeModal === "Vé Xem Phim"} onClose={() => { setActiveModal(null); setIsMovieFormOpen(false); }} title="🎟️ Lịch sử Vé Xem Phim">
+        {!isMovieFormOpen ? (
+          <>
+            <button onClick={() => handleOpenMovieForm()} style={{ width: '100%', padding: '10px', marginBottom: '15px', background: 'var(--pastel-pink)', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>➕ Thêm Vé Mới</button>
+            <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {movies.map((movie, idx) => (
+                <div key={idx} className="movie-ticket" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', border: '1px solid #eee', borderRadius: '8px' }}>
+                  <div>
+                    <strong style={{ display: 'block', marginBottom: '5px' }}>{movie.title}</strong>
+                    <span style={{ fontSize: '0.85rem', color: '#666' }}>🕒 {movie.time} - 📅 {movie.date}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <button className="action-btn" onClick={() => handleOpenMovieForm(movie)}>✏️</button>
+                    <button className="action-btn" onClick={() => handleDeleteMovie(movie.id)}>🗑️</button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div>
-              <button className="action-btn" onClick={() => handleEditMovie(movie)}>✏️</button>
-              <button className="action-btn" onClick={() => handleDeleteMovie(movie.id)}>🗑️</button>
+          </>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <input 
+              type="text" 
+              placeholder="Tên phim" 
+              value={movieForm.title} 
+              onChange={(e) => setMovieForm({...movieForm, title: e.target.value})}
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }}
+            />
+            <input 
+              type="text" 
+              placeholder="Ngày xem (VD: 14/02/2026)" 
+              value={movieForm.date} 
+              onChange={(e) => setMovieForm({...movieForm, date: e.target.value})}
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }}
+            />
+            <input 
+              type="text" 
+              placeholder="Giờ chiếu (VD: 20:00)" 
+              value={movieForm.time} 
+              onChange={(e) => setMovieForm({...movieForm, time: e.target.value})}
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+              <button onClick={() => setIsMovieFormOpen(false)} style={{ padding: '10px 15px', background: '#ccc', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Hủy</button>
+              <button onClick={handleSaveMovie} style={{ padding: '10px 20px', background: 'var(--pastel-pink-dark)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Lưu Vé</button>
             </div>
           </div>
-        ))}
+        )}
       </Modal>
 
       {activeModal === "Điện Thoại" && (
