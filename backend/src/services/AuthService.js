@@ -8,6 +8,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'hello-kitty-super-secret-key-123';
 
 // In-memory store for OTP requests (Email -> { code, expires, password, displayName })
 const otpStore = new Map();
+// In-memory store for Reset requests (Email -> { code, expires })
+const resetStore = new Map();
 
 class AuthService {
   async sendOTPRequest(email, password, displayName) {
@@ -108,7 +110,7 @@ class AuthService {
     // Instead of joining directly, create a pair request
     await AuthRepository.createPairRequest(currentUser.id, partner.id);
 
-    return { message: 'Đã gửi lời mời ghép đôi. Đang chờ xác nhận!' };
+    return { message: 'Đã gửi lời mời ghép đôi. Đang chờ xác nhận!', targetId: partner.id };
   }
 
   async getPairRequests(currentUser) {
@@ -121,9 +123,8 @@ class AuthService {
       throw new Error('Lời mời không hợp lệ');
     }
 
-    const requester = await AuthRepository.getUserByEmail((await AuthRepository.getUserByCoupleCode((await AuthRepository.getPendingPairRequests(currentUser.id)).find(r => r.id === requestId).requester.couple_code)).email); 
-    // Let's refetch requester properly
-    const { data: requesterData } = await AuthRepository.supabase.from('users').select('*').eq('id', request.requester_id).single();
+    // Fetch requester properly
+    const requesterData = await AuthRepository.getUserById(request.requester_id);
 
     if (!requesterData) throw new Error('Người gửi không tồn tại');
 
@@ -145,7 +146,7 @@ class AuthService {
     await MailService.sendPairSuccess(requesterData.email, currentUser.display_name);
 
     const updatedUser = { ...currentUser, room_id: roomId };
-    return this.generateAuthResponse(updatedUser);
+    return { ...this.generateAuthResponse(updatedUser), requesterId: request.requester_id, roomId };
   }
 
   async getPartner(currentUser) {
@@ -170,6 +171,49 @@ class AuthService {
         room_id: user.room_id
       }
     };
+  }
+
+  async sendPasswordResetOTP(email) {
+    if (!email) throw new Error('Vui lòng nhập email');
+
+    const user = await AuthRepository.getUserByEmail(email);
+    if (!user) throw new Error('Không tìm thấy tài khoản với email này');
+    if (!user.is_verified) throw new Error('Tài khoản này chưa được xác thực');
+
+    const otp_code = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp_expires = new Date(Date.now() + 5 * 60000); // 5 mins
+
+    resetStore.set(email, {
+      code: otp_code,
+      expires: otp_expires
+    });
+
+    await MailService.sendPasswordReset(email, otp_code);
+    return { message: 'Đã gửi mã khôi phục mật khẩu. Vui lòng kiểm tra email.' };
+  }
+
+  async resetPassword(email, code, newPassword) {
+    if (!email || !code || !newPassword) throw new Error('Vui lòng nhập đủ thông tin');
+
+    const resetData = resetStore.get(email);
+    if (!resetData) throw new Error('Không có yêu cầu khôi phục mật khẩu cho email này');
+    if (resetData.code !== code) throw new Error('Mã xác nhận không đúng');
+    if (new Date() > resetData.expires) {
+      resetStore.delete(email);
+      throw new Error('Mã xác nhận đã hết hạn. Vui lòng gửi lại');
+    }
+
+    const user = await AuthRepository.getUserByEmail(email);
+    if (!user) throw new Error('Không tìm thấy tài khoản');
+
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    
+    // Update password
+    await AuthRepository.updateUser(user.id, { password_hash });
+
+    resetStore.delete(email);
+
+    return { message: 'Đổi mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.' };
   }
 }
 

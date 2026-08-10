@@ -4,18 +4,36 @@ import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
 import { getPairRequests, acceptPairRequest } from '../api/authApi';
 import { API_URL } from '../api/apiClient';
+import { socket } from '../utils/socket';
+import { toast } from 'react-hot-toast';
 
 const Profile = () => {
   const { user, logout, setUser } = useContext(AuthContext);
   const [partnerCode, setPartnerCode] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [requests, setRequests] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user && !user.room_id) {
       loadRequests();
+      
+      // Connect to personal socket room for realtime updates
+      socket.connect();
+      socket.emit('join_user_room', user.id);
+
+      socket.on('new_pair_request', () => {
+        loadRequests(); // Tự động reload danh sách khi có lời mời mới
+      });
+
+      socket.on('pair_accepted', (data) => {
+        // Nếu người kia đồng ý, cập nhật thông tin user ngay lập tức
+        setUser({ ...user, room_id: data.roomId });
+      });
+
+      return () => {
+        socket.off('new_pair_request');
+        socket.off('pair_accepted');
+      };
     }
   }, [user]);
 
@@ -31,24 +49,21 @@ const Profile = () => {
   const handlePair = async (e) => {
     e.preventDefault();
     try {
-      setError('');
-      setSuccess('');
       const res = await axios.post(`${API_URL}/auth/pair`, { partnerCode });
-      setSuccess(res.data.message || 'Đã gửi lời mời thành công!');
+      toast.success(res.data.message || 'Đã gửi lời mời thành công!');
+      setPartnerCode('');
     } catch (err) {
-      setError(err.response?.data?.error || 'Lỗi gửi yêu cầu');
+      toast.error(err.response?.data?.error || 'Lỗi gửi yêu cầu');
     }
   };
 
   const handleAccept = async (requestId) => {
     try {
-      setError('');
-      setSuccess('');
       const data = await acceptPairRequest(requestId);
+      toast.success('Ghép đôi thành công! Hãy vào không gian chung ngay nào.');
       setUser(data.user);
-      setSuccess('Ghép đôi thành công! Hãy vào không gian chung ngay nào.');
     } catch (err) {
-      setError(err.response?.data?.error || 'Lỗi chấp nhận lời mời');
+      toast.error(err.response?.data?.error || 'Lỗi chấp nhận lời mời');
     }
   };
 
@@ -73,8 +88,6 @@ const Profile = () => {
             {/* Form gửi lời mời */}
             <form onSubmit={handlePair} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '30px' }}>
               <p style={{ margin: 0, fontWeight: 'bold', color: '#ff6b81' }}>Hoặc nhập mã của nửa kia:</p>
-              {error && <p style={{ color: 'red', margin: 0, fontSize: '0.9rem' }}>{error}</p>}
-              {success && <p style={{ color: 'green', margin: 0, fontSize: '0.9rem' }}>{success}</p>}
               <input 
                 type="text" 
                 placeholder="Nhập mã 6 ký tự..." 

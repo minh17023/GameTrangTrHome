@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import { Toaster } from 'react-hot-toast';
 import './assets/css/index.css';
 import './assets/css/sparkle.css';
 
@@ -31,6 +32,28 @@ function AppContent() {
 
   return (
     <>
+      <Toaster 
+        position="top-right" 
+        toastOptions={{
+          style: {
+            fontFamily: 'Quicksand',
+            borderRadius: '10px',
+            background: '#333',
+            color: '#fff',
+          },
+          success: {
+            style: {
+              background: '#4ade80',
+            },
+          },
+          error: {
+            style: {
+              background: '#ef4444',
+            },
+          },
+        }} 
+      />
+      
       {/* Render Sparkles */}
       {sparkles.map(sparkle => (
         <div 

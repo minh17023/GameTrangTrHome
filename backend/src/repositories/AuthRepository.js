@@ -11,6 +11,16 @@ class AuthRepository {
     return data;
   }
 
+  async getUserById(id) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+
   async getUserByCoupleCode(code) {
     const { data, error } = await supabase
       .from('users')

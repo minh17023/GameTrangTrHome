@@ -54,6 +54,29 @@ class MailService {
       console.error('Lỗi gửi mail chúc mừng:', error);
     }
   }
+
+  async sendPasswordReset(email, otpCode) {
+    const mailOptions = {
+      from: 'Hello Kitty House <minh17022k4@gmail.com>',
+      to: email,
+      subject: 'Yêu cầu đặt lại mật khẩu',
+      html: `
+        <div style="font-family: Arial, sans-serif; text-align: center; color: #ff6b81; padding: 20px;">
+          <h2>Lấy lại chìa khóa 🗝️</h2>
+          <p>Mã xác nhận để đặt lại mật khẩu của bạn là:</p>
+          <h1 style="background: #ffd1dc; display: inline-block; padding: 10px 20px; border-radius: 10px; color: #ff6b81;">${otpCode}</h1>
+          <p>Mã này có hiệu lực trong vòng 5 phút. Đừng chia sẻ mã này cho ai nhé!</p>
+        </div>
+      `
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error('Lỗi gửi mail reset mật khẩu:', error);
+      throw new Error('Không thể gửi email. Vui lòng thử lại.');
+    }
+  }
 }
 
 export default new MailService();

@@ -21,6 +21,26 @@ class AuthController {
     }
   }
 
+  async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+      const data = await AuthService.sendPasswordResetOTP(email);
+      res.json(data);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  async resetPassword(req, res) {
+    try {
+      const { email, code, newPassword } = req.body;
+      const data = await AuthService.resetPassword(email, code, newPassword);
+      res.json(data);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   async login(req, res) {
     try {
       const { email, password } = req.body;
@@ -40,6 +60,10 @@ class AuthController {
     try {
       const { partnerCode } = req.body;
       const data = await AuthService.pairCouple(req.user, partnerCode);
+      const io = req.app.get('io');
+      if (io && data.targetId) {
+        io.to(`user_${data.targetId}`).emit('new_pair_request');
+      }
       res.json(data);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -59,6 +83,10 @@ class AuthController {
     try {
       const { requestId } = req.body;
       const data = await AuthService.acceptPairRequest(req.user, requestId);
+      const io = req.app.get('io');
+      if (io && data.requesterId) {
+        io.to(`user_${data.requesterId}`).emit('pair_accepted', { roomId: data.roomId });
+      }
       res.json(data);
     } catch (error) {
       res.status(400).json({ error: error.message });

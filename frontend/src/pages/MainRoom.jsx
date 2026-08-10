@@ -13,6 +13,7 @@ import { uploadFile } from '../api/uploadApi';
 import { getAllItems } from '../api/itemApi';
 import { getPartner } from '../api/authApi';
 import { socket } from '../utils/socket';
+import { toast } from 'react-hot-toast';
 import '../assets/css/index.css';
 
 const MainRoom = () => {
@@ -63,11 +64,26 @@ const MainRoom = () => {
     socket.emit('join_room', user.room_id);
     
     const handleDataChanged = (data) => {
-      if (data.type === 'fridge') getFridgeItems().then(setFridgeItems);
-      if (data.type === 'movie') getMovies().then(setMovies);
-      if (data.type === 'phone') getPhoneMessages().then(setVoiceMessages);
-      if (data.type === 'music') getMusic().then(setMusicList);
-      if (data.type === 'letter') getLetter().then(l => setLetterContent(l?.content || ""));
+      if (data.type === 'fridge') {
+        getFridgeItems().then(setFridgeItems);
+        toast('Nửa kia vừa cập nhật Tủ lạnh! 🧊', { icon: '🧑‍🤝‍🧑' });
+      }
+      if (data.type === 'movie') {
+        getMovies().then(setMovies);
+        toast('Nửa kia vừa cập nhật Vé Xem Phim! 🎟️', { icon: '🧑‍🤝‍🧑' });
+      }
+      if (data.type === 'phone') {
+        getPhoneMessages().then(setVoiceMessages);
+        toast('Nửa kia vừa gửi Lời nhắn mới! 📱', { icon: '🧑‍🤝‍🧑' });
+      }
+      if (data.type === 'music') {
+        getMusic().then(setMusicList);
+        toast('Nửa kia vừa cập nhật danh sách Nhạc! 🎧', { icon: '🧑‍🤝‍🧑' });
+      }
+      if (data.type === 'letter') {
+        getLetter().then(l => setLetterContent(l?.content || ""));
+        toast('Bạn có thư mới từ người ấy! 💌', { icon: '🧑‍🤝‍🧑', duration: 5000 });
+      }
     };
 
     const handleMusicAction = (data) => {
@@ -222,14 +238,16 @@ const MainRoom = () => {
     fileInput.onchange = async (e) => {
       const file = e.target.files[0];
       if (file) {
-        alert("Đang tải file lên, vui lòng đợi...");
+        toast.loading("Đang tải file lên, vui lòng đợi...", { id: 'uploadPhone' });
         try {
           const res = await uploadFile(file);
           const added = await addPhoneMessage(title, res.url);
           setVoiceMessages([added, ...voiceMessages]);
           socket.emit('data_changed', { type: 'phone', roomId: user.room_id });
-          alert("Thêm tin nhắn thành công!");
-        } catch (err) { alert("Lỗi tải lên!"); }
+          toast.success("Thêm tin nhắn thành công!", { id: 'uploadPhone' });
+        } catch (err) { 
+          toast.error("Lỗi tải lên!", { id: 'uploadPhone' }); 
+        }
       }
     };
     fileInput.click();
@@ -254,11 +272,12 @@ const MainRoom = () => {
   const handleMusicSubmit = async (e) => {
     e.preventDefault();
     if (!musicTitle || !musicAudio || !musicCover) {
-      alert("Vui lòng điền đủ tên bài hát, file nhạc và file ảnh bìa!");
+      toast.error("Vui lòng điền đủ tên bài hát, file nhạc và file ảnh bìa!");
       return;
     }
     
     setIsUploadingFiles(true);
+    toast.loading("Đang tải nhạc lên...", { id: 'uploadMusic' });
     try {
       const [audioRes, imageRes] = await Promise.all([
         uploadFile(musicAudio),
@@ -267,14 +286,14 @@ const MainRoom = () => {
       const added = await addMusic(musicTitle, audioRes.url, imageRes.url);
       setMusicList([added, ...musicList]);
       socket.emit('data_changed', { type: 'music', roomId: user.room_id });
-      alert("Thêm bài hát thành công!");
+      toast.success("Thêm bài hát thành công!", { id: 'uploadMusic' });
       // Reset form
       setMusicTitle("");
       setMusicAudio(null);
       setMusicCover(null);
       setIsUploadingMusic(false);
     } catch (err) { 
-      alert("Lỗi upload!"); 
+      toast.error("Lỗi upload!", { id: 'uploadMusic' }); 
     } finally {
       setIsUploadingFiles(false);
     }

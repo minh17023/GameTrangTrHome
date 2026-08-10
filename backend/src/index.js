@@ -30,6 +30,8 @@ const io = new Server(server, {
   }
 });
 
+app.set('io', io);
+
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
@@ -37,6 +39,13 @@ io.on('connection', (socket) => {
     if (roomId) {
       socket.join(roomId);
       console.log(`User ${socket.id} joined room ${roomId}`);
+    }
+  });
+
+  socket.on('join_user_room', (userId) => {
+    if (userId) {
+      socket.join(`user_${userId}`);
+      console.log(`User ${socket.id} joined personal room user_${userId}`);
     }
   });
 

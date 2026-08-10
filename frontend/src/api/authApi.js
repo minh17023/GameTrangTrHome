@@ -29,3 +29,13 @@ export const acceptPairRequest = async (requestId) => {
   });
   return data;
 };
+
+export const sendPasswordResetOTP = async (email) => {
+  const { data } = await axios.post(`${API_URL}/auth/forgot-password`, { email });
+  return data;
+};
+
+export const resetPassword = async (email, code, newPassword) => {
+  const { data } = await axios.post(`${API_URL}/auth/reset-password`, { email, code, newPassword });
+  return data;
+};
