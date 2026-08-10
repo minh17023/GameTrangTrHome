@@ -292,3 +292,74 @@ input, textarea, select {
 
 .nav-dropdown span { cursor: pointer; border-radius: 4px; padding: 5px; }
 .nav-dropdown span:hover { background: #e50914; }
+
+/* TV Modal Responsive */
+.tv-navbar {
+  display: flex;
+  align-items: center;
+  padding: 15px 30px;
+  background: rgba(20, 20, 20, 0.95);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  border-bottom: 1px solid #333;
+}
+.tv-nav-menu {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  align-items: center;
+}
+@media (max-width: 768px) {
+  .tv-navbar {
+    flex-direction: column;
+    padding: 10px;
+    gap: 15px;
+    position: relative !important;
+  }
+  .tv-nav-top {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .tv-nav-menu {
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+    width: 100%;
+  }
+  .tv-logo {
+    font-size: 1.5rem !important;
+  }
+  .tv-search-form {
+    width: 100%;
+  }
+  .nav-dropdown {
+    width: 90vw !important;
+    left: -10vw !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .tv-close-btn {
+    position: static !important;
+    font-size: 1.2rem !important;
+  }
+  .modal-content {
+    padding: 0 !important;
+  }
+  .tv-content {
+    padding-top: 20px !important;
+  }
+  .tv-hero {
+    height: 40vh !important;
+  }
+  .tv-hero-title {
+    font-size: 2rem !important;
+  }
+  .tv-movie-list {
+    padding: 0 15px !important;
+  }
+  .nav-item {
+    font-size: 0.9rem;
+  }
+}

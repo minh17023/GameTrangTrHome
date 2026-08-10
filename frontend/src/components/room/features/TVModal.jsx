@@ -227,9 +227,13 @@ const TVModal = ({ isOpen, onClose, user, socket }) => {
   const renderMovieGrid = (list) => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '15px', padding: '20px 0' }}>
       {list.map(movie => (
-        <div key={movie._id || movie.slug} onClick={() => handleViewDetail(movie)} style={{ cursor: 'pointer', transition: 'transform 0.2s', background: '#222', borderRadius: '8px', overflow: 'hidden' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
-          <div style={{ width: '100%', aspectRatio: '2/3', background: '#333' }}>
+        <div key={movie._id || movie.slug} onClick={() => handleViewDetail(movie)} style={{ cursor: 'pointer', transition: 'transform 0.2s', background: '#222', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+          <div style={{ width: '100%', aspectRatio: '2/3', background: '#333', position: 'relative' }}>
             <img src={getPoster(movie)} alt={movie.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.src = 'https://via.placeholder.com/300x450?text=No+Poster'; }} />
+          </div>
+          <div style={{ padding: '10px' }}>
+            <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{movie.name}</h4>
+            <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{movie.origin_name || movie.year}</p>
           </div>
         </div>
       ))}
@@ -240,12 +244,15 @@ const TVModal = ({ isOpen, onClose, user, socket }) => {
     <Modal isOpen={isOpen} onClose={handleClose} title="" width="1100px" darkTheme={true}>
       <div style={{ background: '#141414', color: 'white', height: '85vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
         
-        {/* Navbar - Đã bỏ gradient phức tạp để giảm lag */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '15px 30px', background: 'rgba(20, 20, 20, 0.95)', position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, borderBottom: '1px solid #333' }}>
-          <h1 style={{ color: '#e50914', margin: 0, marginRight: '30px', fontSize: '1.8rem', cursor: 'pointer' }} onClick={() => fetchHomeMovies(1)}>NETFLIX</h1>
+        {/* Navbar */}
+        <div className="tv-navbar">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }} className="tv-nav-top">
+            <h1 className="tv-logo" style={{ color: '#e50914', margin: 0, fontSize: '1.8rem', cursor: 'pointer' }} onClick={() => fetchHomeMovies(1)}>NETFLIX</h1>
+            <button className="tv-close-btn" onClick={handleClose} style={{ background: 'transparent', color: 'white', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
+          </div>
           
           {!activeEpisode && !activeMovie && (
-            <div style={{ display: 'flex', gap: '20px', flex: 1, alignItems: 'center' }}>
+            <div className="tv-nav-menu">
               <div style={{ position: 'relative', cursor: 'pointer', fontWeight: 'bold' }} className="nav-item">Thể Loại ▾
                 <div className="nav-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', left: '-50px', background: 'rgba(20,20,20,0.95)', border: '1px solid #333', padding: '15px', width: '600px', flexWrap: 'wrap', gap: '10px', borderRadius: '8px' }}>
                   {categories.map(c => <span key={c._id} onClick={() => handleFilter('the-loai', c, 1)} style={{ padding: '8px', fontSize: '0.9rem', width: 'calc(25% - 10px)', textAlign: 'center' }}>{c.name}</span>)}
@@ -262,24 +269,22 @@ const TVModal = ({ isOpen, onClose, user, socket }) => {
                 </div>
               </div>
 
-              <form onSubmit={handleSearch} style={{ display: 'flex', marginLeft: 'auto', background: 'rgba(0,0,0,0.6)', border: '1px solid #fff', borderRadius: '4px', overflow: 'hidden' }}>
+              <form className="tv-search-form" onSubmit={handleSearch} style={{ display: 'flex', background: 'rgba(0,0,0,0.6)', border: '1px solid #fff', borderRadius: '4px', overflow: 'hidden' }}>
                 <input 
                   type="text" 
                   placeholder="Phim, diễn viên..." 
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
-                  style={{ background: 'transparent', border: 'none', color: 'white', padding: '5px 10px', outline: 'none' }}
+                  style={{ background: 'transparent', border: 'none', color: 'white', padding: '5px 10px', outline: 'none', width: '100%' }}
                 />
                 <button type="submit" style={{ background: 'transparent', border: 'none', color: 'white', padding: '5px 10px', cursor: 'pointer' }}>🔍</button>
               </form>
             </div>
           )}
-
-          <button onClick={handleClose} style={{ marginLeft: activeEpisode || activeMovie ? 'auto' : '20px', background: 'transparent', color: 'white', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
         </div>
 
         {/* Content Area */}
-        <div style={{ flex: 1, overflowY: 'auto', paddingTop: '70px', paddingBottom: '30px', position: 'relative' }}>
+        <div className="tv-content" style={{ flex: 1, overflowY: 'auto', paddingBottom: '30px', position: 'relative' }}>
           {loading && <div style={{ position: 'absolute', top: '80px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.8)', padding: '10px 20px', borderRadius: '20px', zIndex: 100 }}>Đang tải dữ liệu...</div>}
 
           {/* Player View */}
@@ -333,10 +338,10 @@ const TVModal = ({ isOpen, onClose, user, socket }) => {
             /* Home & List View */
             <div>
               {heroMovie && view === 'home' && currentPage === 1 && !loading && (
-                <div style={{ position: 'relative', height: '60vh', marginBottom: '20px', background: `url(${getPoster(heroMovie)}) center/cover no-repeat` }}>
+                <div className="tv-hero" style={{ position: 'relative', height: '60vh', marginBottom: '20px', background: `url(${getPoster(heroMovie)}) center/cover no-repeat` }}>
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(to right, #141414 10%, rgba(0,0,0,0.4) 50%, #141414 90%), linear-gradient(to top, #141414 0%, transparent 30%)' }} />
-                  <div style={{ position: 'absolute', bottom: '20%', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', width: '80%' }}>
-                    <h1 style={{ fontSize: '3rem', margin: '0 0 15px 0' }}>{heroMovie.name}</h1>
+                  <div className="tv-hero-content" style={{ position: 'absolute', bottom: '20%', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', width: '80%' }}>
+                    <h1 className="tv-hero-title" style={{ fontSize: '3rem', margin: '0 0 15px 0', textShadow: '2px 2px 5px black' }}>{heroMovie.name}</h1>
                     <button onClick={() => handleViewDetail(heroMovie)} style={{ padding: '12px 35px', background: 'white', color: 'black', border: 'none', borderRadius: '4px', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer' }} onMouseEnter={(e)=>e.target.style.background='rgba(255,255,255,0.8)'} onMouseLeave={(e)=>e.target.style.background='white'}>
                       ▶ Thông tin
                     </button>
@@ -344,7 +349,7 @@ const TVModal = ({ isOpen, onClose, user, socket }) => {
                 </div>
               )}
               
-              <div style={{ padding: '0 40px' }}>
+              <div className="tv-movie-list" style={{ padding: '0 40px' }}>
                 <h2 style={{ fontSize: '1.4rem', color: '#e5e5e5' }}>
                   {view === 'search' ? `Kết quả tìm kiếm cho: "${searchKeyword}"` : filterTitle}
                 </h2>
