@@ -286,3 +286,9 @@ input, textarea, select {
 .action-btn:hover {
   transform: scale(1.2);
 }
+.nav-item:hover .nav-dropdown {
+  display: flex !important; 
+}
+
+.nav-dropdown span { cursor: pointer; border-radius: 4px; padding: 5px; }
+.nav-dropdown span:hover { background: #e50914; }

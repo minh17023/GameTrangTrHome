@@ -161,7 +161,6 @@ server.listen(PORT, async () => {
   // --- HỆ THỐNG NHẮC NHỞ EMAIL TỰ ĐỘNG ---
   if (process.env.GAS_URL) {
     console.log("⏰ Hệ thống nhắc nhở qua Email (GAS) đang chạy...");
-    const mailService = new MailService();
     
     // Chạy kiểm tra mỗi 1 giờ
     setInterval(async () => {
@@ -203,7 +202,7 @@ server.listen(PORT, async () => {
                 </div>
               `;
               
-            await mailService.sendEmailViaGas(emails, subject, html);
+            await MailService.sendEmailViaGas(emails, subject, html);
             
             console.log(`Đã gửi email nhắc nhở chăm sóc bé ${pet.name} tới ${emails}`);
             
