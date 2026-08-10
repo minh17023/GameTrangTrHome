@@ -110,6 +110,7 @@ const DraggableItem = ({ id, icon, label, initialX, initialY, dbPosition, onClic
     <motion.div
       drag
       dragMomentum={false}
+      dragConstraints={{ left: 0, top: 0, right: window.innerWidth - 80, bottom: window.innerHeight - 80 }}
       style={{ x, y, position: 'absolute', cursor: 'grab', zIndex: 10, mixBlendMode: blendMode || 'normal' }}
       whileTap={{ cursor: 'grabbing', scale: 0.9 }}
       whileHover={{ scale: 1.1, filter: 'drop-shadow(0px 0px 10px rgba(255,255,255,0.8))' }}

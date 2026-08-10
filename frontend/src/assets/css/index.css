@@ -13,6 +13,8 @@ body {
   font-family: 'Quicksand', sans-serif;
   overflow: hidden;
   background-color: #ffe4e1;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .static-house-wrapper {
@@ -23,6 +25,8 @@ body {
   background-position: center;
   background-repeat: no-repeat;
   transition: background-image 0.5s ease-in-out;
+  touch-action: none;
+  overflow: hidden;
 }
 
 .draggable-item {
@@ -147,6 +151,10 @@ body {
   resize: none;
   box-sizing: border-box;
   background: #fffafa;
+}
+
+input, textarea, select {
+  font-size: 16px !important;
 }
 
 .fridge-item {
