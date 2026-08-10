@@ -126,10 +126,9 @@ const DraggableItem = ({ id, icon, label, initialX, initialY, dbPosition, onClic
       onDragEnd={handleDragEnd}
       className="draggable-item-2d"
     >
-      <div className="item-icon-2d" style={{ fontSize: '4rem' }}>
+      <div className="item-icon-2d" style={{ fontSize: '4rem', pointerEvents: 'none' }}>
         {icon}
       </div>
-      <div className="item-label-2d">{label}</div>
     </motion.div>
   );
 };
