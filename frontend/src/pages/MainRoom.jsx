@@ -12,6 +12,8 @@ import { getMusic, addMusic, updateMusic, deleteMusic } from '../api/musicApi';
 import { uploadFile } from '../api/uploadApi';
 import { getAllItems } from '../api/itemApi';
 import { getPartner, updateProfile } from '../api/authApi';
+import { getPhotos, createPhoto, toggleFavoritePhoto } from '../api/photoApi';
+import StarrySpace from '../components/room/StarrySpace';
 import Messenger from '../components/room/Messenger';
 import { socket } from '../utils/socket';
 import { toast } from 'react-hot-toast';
@@ -49,6 +51,11 @@ const MainRoom = () => {
   const [letterViewMode, setLetterViewMode] = useState('list');
   const [selectedLetter, setSelectedLetter] = useState(null);
   const [newLetterContent, setNewLetterContent] = useState("");
+
+  const [photos, setPhotos] = useState([]);
+  const [isStarrySpaceOpen, setIsStarrySpaceOpen] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
 
   // Music Form State
   const [isUploadingMusic, setIsUploadingMusic] = useState(false);
@@ -130,6 +137,10 @@ const MainRoom = () => {
         getMusic().then(setMusicList);
         toast('Nửa kia vừa cập nhật danh sách Nhạc! 🎧', { icon: '🧑‍🤝‍🧑' });
       }
+      if (data.type === 'photo') {
+        getPhotos().then(setPhotos);
+        toast('Nửa kia vừa cập nhật Album Tình Yêu! 📷', { icon: '🧑‍🤝‍🧑' });
+      }
       if (data.type === 'letter' || data.type === 'letter_read') {
         getLetters().then(setLetters);
         if (data.type === 'letter') {
@@ -174,17 +185,19 @@ const MainRoom = () => {
 
   const fetchAllData = async () => {
     try {
-      const [fetchedLetters, fridge, movieList, phone, music, itemsData, partnerData] = await Promise.all([
+      const [fetchedLetters, fridge, movieList, phone, music, itemsData, partnerData, fetchedPhotos] = await Promise.all([
         getLetters().catch(() => []),
         getFridgeItems().catch(() => []),
         getMovies().catch(() => []),
         getPhoneMessages().catch(() => []),
         getMusic().catch(() => []),
         getAllItems().catch(() => []),
-        getPartner().catch(() => null)
+        getPartner().catch(() => null),
+        getPhotos().catch(() => [])
       ]);
 
       if (fetchedLetters) setLetters(fetchedLetters);
+      if (fetchedPhotos) setPhotos(fetchedPhotos);
       if (fridge) setFridgeItems(fridge);
       if (movieList) setMovies(movieList);
       if (phone) setVoiceMessages(phone);
@@ -241,6 +254,33 @@ const MainRoom = () => {
         socket.emit('data_changed', { type: 'letter_read', roomId: user?.room_id });
       }
     }
+  };
+
+  // ---- PHOTO ALBUM ----
+  const handleUploadPhoto = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      setIsUploadingPhoto(true);
+      const res = await uploadFile(file);
+      if (res.url) {
+        const added = await createPhoto(res.url);
+        setPhotos([added, ...photos]);
+        socket.emit('data_changed', { type: 'photo', roomId: user?.room_id });
+      }
+    } catch (err) {
+      toast.error('Lỗi tải ảnh lên');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleToggleFavoritePhoto = async (id) => {
+    try {
+      const updated = await toggleFavoritePhoto(id);
+      setPhotos(photos.map(p => p.id === id ? updated : p));
+      socket.emit('data_changed', { type: 'photo', roomId: user?.room_id });
+    } catch (err) {}
   };
 
   // ---- FRIDGE ----
@@ -482,6 +522,7 @@ const MainRoom = () => {
         <>
           <DraggableItem icon="💌" label="Hòm Thư" initialX={400} initialY={500} dbPosition={itemPositions["Hòm Thư"]} onClick={() => setActiveModal("Thư")} roomId={user.room_id} />
           <DraggableItem icon="🎧" label="Máy Nghe Nhạc" initialX={700} initialY={600} dbPosition={itemPositions["Máy Nghe Nhạc"]} onClick={() => setActiveModal("Máy Nghe Nhạc")} roomId={user.room_id} />
+          <DraggableItem icon="📷" label="Máy Ảnh" initialX={550} initialY={400} dbPosition={itemPositions["Máy Ảnh"]} onClick={() => setActiveModal("Máy Ảnh")} roomId={user.room_id} />
         </>
       )}
 
@@ -846,6 +887,72 @@ const MainRoom = () => {
         )}
       </Modal>
 
+      {/* Máy Ảnh Modal */}
+      <Modal isOpen={activeModal === "Máy Ảnh"} onClose={() => { setActiveModal(null); setSelectedPhoto(null); }} title="📷 Album Tình Yêu" width="800px">
+        {selectedPhoto ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+            <button 
+              onClick={() => setSelectedPhoto(null)} 
+              style={{ position: 'absolute', top: 0, left: 0, padding: '8px 15px', background: '#ccc', border: 'none', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              ⬅ Quay lại
+            </button>
+            <img 
+              src={selectedPhoto.url} 
+              alt="Ảnh phóng to" 
+              style={{ maxWidth: '100%', maxHeight: '60vh', borderRadius: '10px', boxShadow: '0 5px 15px rgba(0,0,0,0.2)' }}
+            />
+            <button 
+              onClick={() => handleToggleFavoritePhoto(selectedPhoto.id)}
+              style={{ marginTop: '15px', padding: '10px 20px', background: 'var(--pastel-pink)', border: 'none', borderRadius: '20px', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
+            >
+              {selectedPhoto.is_favorite ? '❤️ Bỏ Thích' : '🤍 Yêu Thích'}
+            </button>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+              <label style={{ padding: '10px 15px', background: 'var(--pastel-pink)', color: '#000', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                {isUploadingPhoto ? 'Đang tải...' : '➕ Thêm Ảnh'}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadPhoto} disabled={isUploadingPhoto} />
+              </label>
+              <button 
+                onClick={() => { setActiveModal(null); setIsStarrySpaceOpen(true); }}
+                style={{ padding: '10px 15px', background: '#000', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                🌌 Không Gian
+              </button>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '15px', maxHeight: '60vh', overflowY: 'auto', padding: '10px' }}>
+              {photos.length === 0 ? <p style={{textAlign: 'center', color: '#999', gridColumn: '1 / -1'}}>Chưa có bức ảnh nào...</p> : photos.map(photo => (
+                <div 
+                  key={photo.id} 
+                  style={{ position: 'relative', width: '100%', paddingBottom: '100%', cursor: 'pointer', transition: 'transform 0.2s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <img 
+                    src={photo.url} 
+                    alt="Kỷ niệm" 
+                    onClick={() => setSelectedPhoto(photo)}
+                    style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }} 
+                  />
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleToggleFavoritePhoto(photo.id); }}
+                    style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', color: photo.is_favorite ? 'red' : '#999', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                  >
+                    {photo.is_favorite ? '❤️' : '🤍'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </Modal>
+
+      {/* Starry Space */}
+      {isStarrySpaceOpen && <StarrySpace photos={photos} onClose={() => setIsStarrySpaceOpen(false)} />}
     </div>
   );
 };
