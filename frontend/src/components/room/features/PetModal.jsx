@@ -166,7 +166,7 @@ const PetModal = ({ isOpen, onClose, user, socket, pet, setPet }) => {
           <div style={{ textAlign: 'right' }}>
             <h2 style={{ margin: 0, color: '#ff4757' }}>🔥 {pet.streak} Ngày</h2>
             <small style={{ color: '#666' }}>Chuỗi tương tác</small>
-            {pet.streak === 1 && (pet.streak_recoveries_used || 0) < 3 && (
+            {pet.accessories?.includes('streak_broken') && (pet.streak_recoveries_used || 0) < 3 && (
               <button 
                 onClick={handleRecoverStreak}
                 style={{ display: 'block', marginTop: '5px', background: '#feca57', border: 'none', borderRadius: '10px', padding: '5px 10px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
@@ -225,36 +225,44 @@ const PetModal = ({ isOpen, onClose, user, socket, pet, setPet }) => {
 
         {/* Tab Content */}
         <div style={{ marginTop: '20px' }}>
-          {tab === 'interact' && (
+          {tab === 'interact' && (() => {
+            const today = new Date().toISOString().split('T')[0];
+            const hasFed = pet.accessories?.includes(`limit_${user?.id}_feed_${today}`);
+            const hasPlayed = pet.accessories?.includes(`limit_${user?.id}_play_${today}`);
+            const hasPet = pet.accessories?.includes(`limit_${user?.id}_pet_${today}`);
+            const hasSleep = pet.accessories?.includes(`limit_${user?.id}_sleep_${today}`);
+
+            return (
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                 <button 
-                  onClick={() => handleInteract('feed')}
-                  style={{ flex: 1, padding: '15px', background: '#ffeaa7', border: '2px solid #fdcb6e', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold', color: '#d63031', cursor: 'pointer', transition: 'transform 0.1s' }}
+                  onClick={() => !hasFed && handleInteract('feed')}
+                  style={{ flex: 1, padding: '15px', background: '#ffeaa7', border: '2px solid #fdcb6e', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold', color: '#d63031', cursor: hasFed ? 'not-allowed' : 'pointer', opacity: hasFed ? 0.5 : 1, transition: 'transform 0.1s' }}
                 >
                   🍖 Cho Ăn <br/><small style={{ color: '#0984e3' }}>+10 EXP</small>
                 </button>
                 <button 
-                  onClick={() => handleInteract('play')}
-                  style={{ flex: 1, padding: '15px', background: '#81ecec', border: '2px solid #00cec9', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold', color: '#0984e3', cursor: 'pointer', transition: 'transform 0.1s' }}
+                  onClick={() => !hasPlayed && handleInteract('play')}
+                  style={{ flex: 1, padding: '15px', background: '#81ecec', border: '2px solid #00cec9', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold', color: '#0984e3', cursor: hasPlayed ? 'not-allowed' : 'pointer', opacity: hasPlayed ? 0.5 : 1, transition: 'transform 0.1s' }}
                 >
                   🧶 Chơi Đùa <br/><small style={{ color: '#0984e3' }}>+10 EXP</small>
                 </button>
                 <button 
-                  onClick={() => handleInteract('pet')}
-                  style={{ flex: 1, padding: '15px', background: '#fd79a8', border: '2px solid #e84393', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold', color: '#fff', cursor: 'pointer', transition: 'transform 0.1s' }}
+                  onClick={() => !hasPet && handleInteract('pet')}
+                  style={{ flex: 1, padding: '15px', background: '#fd79a8', border: '2px solid #e84393', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold', color: '#fff', cursor: hasPet ? 'not-allowed' : 'pointer', opacity: hasPet ? 0.5 : 1, transition: 'transform 0.1s' }}
                 >
                   👋 Vuốt Ve <br/><small style={{ color: '#fff' }}>+10 EXP</small>
                 </button>
                 
                 <button 
-                  onClick={handleToggleSleep}
-                  style={{ flex: 0.5, padding: '15px', background: '#a29bfe', border: '2px solid #6c5ce7', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold', color: '#fff', cursor: 'pointer', transition: 'transform 0.1s' }}
+                  onClick={() => !hasSleep && handleToggleSleep()}
+                  style={{ flex: 0.5, padding: '15px', background: '#a29bfe', border: '2px solid #6c5ce7', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold', color: '#fff', cursor: hasSleep ? 'not-allowed' : 'pointer', opacity: hasSleep ? 0.5 : 1, transition: 'transform 0.1s' }}
                   title="Cho bé đi ngủ"
                 >
-                  🌙 Ngủ
+                  {isSleeping() ? '☀️ Thức' : '🌙 Ngủ'}
                 </button>
               </div>
-          )}
+            );
+          })()}
 
           {tab === 'wardrobe' && (
             <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>

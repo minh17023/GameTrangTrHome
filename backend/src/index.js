@@ -5,6 +5,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import rootRouter from './routes/index.js';
 import { supabase } from './config/db.js';
+import MailService from './services/MailService.js';
 
 dotenv.config();
 
@@ -155,5 +156,65 @@ server.listen(PORT, async () => {
     }
   } catch (err) {
     console.error("❌ Không thể kết nối Database:", err.message);
+  }
+
+  // --- HỆ THỐNG NHẮC NHỞ EMAIL TỰ ĐỘNG ---
+  if (process.env.GAS_URL) {
+    console.log("⏰ Hệ thống nhắc nhở qua Email (GAS) đang chạy...");
+    const mailService = new MailService();
+    
+    // Chạy kiểm tra mỗi 1 giờ
+    setInterval(async () => {
+      try {
+        const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+        
+        // Tìm các bé chưa được chăm sóc trong 12 tiếng qua
+        const { data: pets, error } = await supabase
+          .from('pets')
+          .select('*')
+          .lt('last_interacted_at', twelveHoursAgo);
+          
+        if (error || !pets) return;
+        
+        const today = new Date().toISOString().split('T')[0];
+        
+        for (const pet of pets) {
+          const accessories = pet.accessories || [];
+          const reminderKey = `email_reminder_${today}`;
+          
+          if (accessories.includes(reminderKey)) continue; // Đã gửi hôm nay rồi
+          
+          // Lấy thông tin 2 người dùng trong phòng
+          const { data: users } = await supabase
+            .from('users')
+            .select('email, display_name')
+            .eq('room_id', pet.room_id);
+            
+          if (users && users.length > 0) {
+            const emails = users.map(u => u.email).join(', ');
+            
+            const subject = `🚨 Bé ${pet.name} đang đói meo râu kìa!`;
+            const html = `
+                <div style="font-family: sans-serif; text-align: center; padding: 20px; background: #fff0f5; border-radius: 15px;">
+                  <h2 style="color: #ff6b81;">Meo meo! 😿</h2>
+                  <p>Đã nửa ngày rồi hai bạn chưa vào chơi với bé <b>${pet.name}</b> đó.</p>
+                  <p>Bé đang rất đói và nhớ hai bạn! Đừng để đứt chuỗi tương tác nhé!</p>
+                  <a href="https://hello-kitty-house.onrender.com" style="display: inline-block; padding: 12px 25px; background: #ff4757; color: white; font-weight: bold; text-decoration: none; border-radius: 20px; margin-top: 15px;">Vào thăm bé ngay 🏃‍♂️💨</a>
+                </div>
+              `;
+              
+            await mailService.sendEmailViaGas(emails, subject, html);
+            
+            console.log(`Đã gửi email nhắc nhở chăm sóc bé ${pet.name} tới ${emails}`);
+            
+            // Đánh dấu đã gửi
+            accessories.push(reminderKey);
+            await supabase.from('pets').update({ accessories }).eq('id', pet.id);
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi khi chạy cron job email:", err.message);
+      }
+    }, 60 * 60 * 1000); // 1 giờ / lần
   }
 });

@@ -68,12 +68,16 @@ class PetController {
       const daysDiff = Math.floor(now.getTime() / msPerDay) - Math.floor(lastInteracted.getTime() / msPerDay);
       
       let newStreak = pet.streak;
-      
       if (daysDiff === 1) {
         newStreak += 1;
+        // if they had streak_broken, remove it since they are building a new streak
+        accessories = accessories.filter(a => a !== 'streak_broken');
       } else if (daysDiff > 1) {
         // Streak broken
         newStreak = 1;
+        if (!accessories.includes('streak_broken')) {
+          accessories.push('streak_broken');
+        }
       } else if (daysDiff === 0 && pet.exp > 0) {
         // Already interacted today, just give EXP but no streak increase
       } else if (pet.exp === 0) {
@@ -134,10 +138,14 @@ class PetController {
       // For simplicity, let's just add 10 to the current streak as a "recovery bonus" or if we add a `previous_streak` to DB...
       // Let's just add +5 streak as a recovery mechanic, or throw error saying we need previous_streak column.
       // Wait, let's update PetRepository to store `previous_streak`? No, let's just do:
+      let accessories = pet.accessories || [];
+      accessories = accessories.filter(a => a !== 'streak_broken');
+
       const updatedPet = await PetRepository.updatePet(pet.id, {
         streak: pet.streak + 5, // Tạm thời cộng 5 ngày
         streak_recoveries_used: recoveriesUsed + 1,
-        last_recovery_month: currentMonth
+        last_recovery_month: currentMonth,
+        accessories
       });
       
       const io = req.app.get('io');
