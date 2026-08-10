@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
 import { getPairRequests, acceptPairRequest } from '../api/authApi';
+import { API_URL } from '../api/apiClient';
 
 const Profile = () => {
   const { user, logout, setUser } = useContext(AuthContext);
@@ -32,7 +33,7 @@ const Profile = () => {
     try {
       setError('');
       setSuccess('');
-      const res = await axios.post('http://localhost:8080/api/auth/pair', { partnerCode });
+      const res = await axios.post(`${API_URL}/auth/pair`, { partnerCode });
       setSuccess(res.data.message || 'Đã gửi lời mời thành công!');
     } catch (err) {
       setError(err.response?.data?.error || 'Lỗi gửi yêu cầu');

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
 import { verifyOTP } from '../api/authApi';
+import { API_URL } from '../api/apiClient';
 
 const Register = () => {
   const [step, setStep] = useState(1);
@@ -19,7 +20,7 @@ const Register = () => {
     e.preventDefault();
     setError('');
     try {
-      const res = await axios.post('http://localhost:8080/api/auth/register', { email, password, displayName });
+      const res = await axios.post(`${API_URL}/auth/register`, { email, password, displayName });
       setMsg(res.data.message);
       setStep(2);
     } catch (err) {

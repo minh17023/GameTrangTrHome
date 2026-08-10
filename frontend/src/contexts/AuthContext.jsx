@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../api/apiClient';
 
 export const AuthContext = createContext();
 
@@ -22,7 +23,7 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       try {
-        const res = await axios.get('http://localhost:8080/api/auth/me');
+        const res = await axios.get(`${API_URL}/auth/me`);
         setUser(res.data.user);
       } catch (err) {
         console.error("Lỗi lấy thông tin:", err);
