@@ -6,15 +6,22 @@ import musicRoutes from './musicRoutes.js';
 import letterRoutes from './letterRoutes.js';
 import uploadRoutes from './uploadRoutes.js';
 import itemRoutes from './itemRoutes.js';
+import authRoutes from './authRoutes.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.use('/fridge', fridgeRoutes);
-router.use('/movies', movieRoutes);
-router.use('/phone', phoneRoutes);
-router.use('/music', musicRoutes);
-router.use('/letters', letterRoutes);
-router.use('/upload', uploadRoutes);
-router.use('/items', itemRoutes);
+router.use('/auth', authRoutes);
+
+// Các API dưới đây cần đăng nhập
+router.use('/fridge', authMiddleware, fridgeRoutes);
+router.use('/movies', authMiddleware, movieRoutes);
+router.use('/phone', authMiddleware, phoneRoutes);
+router.use('/music', authMiddleware, musicRoutes);
+router.use('/letters', authMiddleware, letterRoutes);
+router.use('/items', authMiddleware, itemRoutes);
+
+// Upload API có thể bảo vệ hoặc public
+router.use('/upload', authMiddleware, uploadRoutes);
 
 export default router;

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import './index.css';
-import './splash.css';
+import React, { useState, useEffect } from 'react';
+import '../assets/css/index.css';
+import '../assets/css/splash.css';
 
 const SplashScreen = ({ onEnter }) => {
   const [items, setItems] = useState([]);

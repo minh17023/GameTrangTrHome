@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import './index.css';
+import '../../assets/css/index.css';
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   return (
@@ -21,8 +21,8 @@ const Modal = ({ isOpen, onClose, title, children }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h2>{title}</h2>
-              <button className="close-btn" onClick={onClose}>✖</button>
+              <h2 className="modal-title">{title}</h2>
+              <button className="modal-close" onClick={onClose}>✖</button>
             </div>
             <div className="modal-body">
               {children}

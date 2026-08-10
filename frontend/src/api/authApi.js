@@ -1,0 +1,31 @@
+import axios from 'axios';
+import { API_URL } from './apiClient';
+
+export const getPartner = async () => {
+  const token = localStorage.getItem('token');
+  const { data } = await axios.get(`${API_URL}/auth/partner`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return data.partner;
+};
+
+export const verifyOTP = async (email, code) => {
+  const { data } = await axios.post(`${API_URL}/auth/verify-otp`, { email, code });
+  return data;
+};
+
+export const getPairRequests = async () => {
+  const token = localStorage.getItem('token');
+  const { data } = await axios.get(`${API_URL}/auth/pair-requests`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return data.requests;
+};
+
+export const acceptPairRequest = async (requestId) => {
+  const token = localStorage.getItem('token');
+  const { data } = await axios.post(`${API_URL}/auth/accept-pair`, { requestId }, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return data;
+};

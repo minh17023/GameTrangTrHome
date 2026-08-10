@@ -1,18 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
-import DraggableItem from './DraggableItem';
-import Modal from './Modal';
-import HelloKittyNPC from './HelloKittyNPC';
-import { getLetter, updateLetter } from './api/letterApi';
-import { getFridgeItems, addFridgeItem, updateFridgeItem, deleteFridgeItem } from './api/fridgeApi';
-import { getMovies, addMovie, updateMovie, deleteMovie } from './api/movieApi';
-import { getPhoneMessages, addPhoneMessage, updatePhoneMessage, deletePhoneMessage } from './api/phoneApi';
-import { getMusic, addMusic, updateMusic, deleteMusic } from './api/musicApi';
-import { uploadFile } from './api/uploadApi';
-import { getAllItems } from './api/itemApi';
-import { socket } from './socket';
-import './index.css';
+import React, { useState, useEffect, useRef, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext';
+import DraggableItem from '../components/common/DraggableItem';
+import Modal from '../components/common/Modal';
+import HelloKittyNPC from '../components/room/HelloKittyNPC';
+import { getLetter, updateLetter } from '../api/letterApi';
+import { getFridgeItems, addFridgeItem, updateFridgeItem, deleteFridgeItem } from '../api/fridgeApi';
+import { getMovies, addMovie, updateMovie, deleteMovie } from '../api/movieApi';
+import { getPhoneMessages, addPhoneMessage, updatePhoneMessage, deletePhoneMessage } from '../api/phoneApi';
+import { getMusic, addMusic, updateMusic, deleteMusic } from '../api/musicApi';
+import { uploadFile } from '../api/uploadApi';
+import { getAllItems } from '../api/itemApi';
+import { getPartner } from '../api/authApi';
+import { socket } from '../utils/socket';
+import '../assets/css/index.css';
 
 const MainRoom = () => {
+  const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+
   const [currentFloor, setCurrentFloor] = useState('living');
   const [activeModal, setActiveModal] = useState(null);
   
@@ -41,11 +47,20 @@ const MainRoom = () => {
   const [musicCover, setMusicCover] = useState(null);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
 
+  // Profile State
+  const [partner, setPartner] = useState(null);
+
   useEffect(() => {
+    if (!user || !user.room_id) {
+      navigate('/profile');
+      return;
+    }
+
     fetchAllData();
     
     // Khởi động kết nối Socket.IO
     socket.connect();
+    socket.emit('join_room', user.room_id);
     
     const handleDataChanged = (data) => {
       if (data.type === 'fridge') getFridgeItems().then(setFridgeItems);
@@ -79,17 +94,18 @@ const MainRoom = () => {
       socket.off('music_action', handleMusicAction);
       socket.disconnect();
     };
-  }, []);
+  }, [user]);
 
   const fetchAllData = async () => {
     try {
-      const [letter, fridge, movieList, phone, music, itemsData] = await Promise.all([
+      const [letter, fridge, movieList, phone, music, itemsData, partnerData] = await Promise.all([
         getLetter().catch(() => null),
         getFridgeItems().catch(() => []),
         getMovies().catch(() => []),
         getPhoneMessages().catch(() => []),
         getMusic().catch(() => []),
-        getAllItems().catch(() => [])
+        getAllItems().catch(() => []),
+        getPartner().catch(() => null)
       ]);
 
       if (letter?.content) setLetterContent(letter.content);
@@ -112,6 +128,7 @@ const MainRoom = () => {
           }, 500);
         }
       }
+      if (partnerData) setPartner(partnerData);
       
       if (itemsData && Array.isArray(itemsData)) {
         const positions = {};
@@ -130,7 +147,7 @@ const MainRoom = () => {
     setLetterContent(content);
     try { 
       await updateLetter(content); 
-      socket.emit('data_changed', { type: 'letter' });
+      socket.emit('data_changed', { type: 'letter', roomId: user.room_id });
     } catch (err) {}
   };
 
@@ -141,7 +158,7 @@ const MainRoom = () => {
       const added = await addFridgeItem(newFood);
       if (added) {
         setFridgeItems([...fridgeItems, added]);
-        socket.emit('data_changed', { type: 'fridge' });
+        socket.emit('data_changed', { type: 'fridge', roomId: user.room_id });
       }
       setNewFood("");
     } catch (err) {}
@@ -151,14 +168,14 @@ const MainRoom = () => {
     if (newName && newName.trim() !== "") {
       const updated = await updateFridgeItem(item.id, newName);
       setFridgeItems(fridgeItems.map(f => f.id === item.id ? updated : f));
-      socket.emit('data_changed', { type: 'fridge' });
+      socket.emit('data_changed', { type: 'fridge', roomId: user.room_id });
     }
   };
   const handleDeleteFood = async (id) => {
     if (window.confirm("Bạn có chắc muốn xóa món này?")) {
       await deleteFridgeItem(id);
       setFridgeItems(fridgeItems.filter(f => f.id !== id));
-      socket.emit('data_changed', { type: 'fridge' });
+      socket.emit('data_changed', { type: 'fridge', roomId: user.room_id });
     }
   };
 
@@ -172,7 +189,7 @@ const MainRoom = () => {
       const added = await addMovie(title, time, date);
       if (added) {
         setMovies([added, ...movies]);
-        socket.emit('data_changed', { type: 'movie' });
+        socket.emit('data_changed', { type: 'movie', roomId: user.room_id });
       }
     }
   };
@@ -184,14 +201,14 @@ const MainRoom = () => {
     if (title && date && time) {
       const updated = await updateMovie(item.id, title, time, date);
       setMovies(movies.map(m => m.id === item.id ? updated : m));
-      socket.emit('data_changed', { type: 'movie' });
+      socket.emit('data_changed', { type: 'movie', roomId: user.room_id });
     }
   };
   const handleDeleteMovie = async (id) => {
     if (window.confirm("Xóa vé phim này?")) {
       await deleteMovie(id);
       setMovies(movies.filter(m => m.id !== id));
-      socket.emit('data_changed', { type: 'movie' });
+      socket.emit('data_changed', { type: 'movie', roomId: user.room_id });
     }
   };
 
@@ -210,7 +227,7 @@ const MainRoom = () => {
           const res = await uploadFile(file);
           const added = await addPhoneMessage(title, res.url);
           setVoiceMessages([added, ...voiceMessages]);
-          socket.emit('data_changed', { type: 'phone' });
+          socket.emit('data_changed', { type: 'phone', roomId: user.room_id });
           alert("Thêm tin nhắn thành công!");
         } catch (err) { alert("Lỗi tải lên!"); }
       }
@@ -222,14 +239,14 @@ const MainRoom = () => {
     if (title) {
       const updated = await updatePhoneMessage(item.id, title, item.audio_url);
       setVoiceMessages(voiceMessages.map(m => m.id === item.id ? updated : m));
-      socket.emit('data_changed', { type: 'phone' });
+      socket.emit('data_changed', { type: 'phone', roomId: user.room_id });
     }
   };
   const handleDeletePhone = async (id) => {
     if (window.confirm("Xóa lời nhắn này?")) {
       await deletePhoneMessage(id);
       setVoiceMessages(voiceMessages.filter(m => m.id !== id));
-      socket.emit('data_changed', { type: 'phone' });
+      socket.emit('data_changed', { type: 'phone', roomId: user.room_id });
     }
   };
 
@@ -249,7 +266,7 @@ const MainRoom = () => {
       ]);
       const added = await addMusic(musicTitle, audioRes.url, imageRes.url);
       setMusicList([added, ...musicList]);
-      socket.emit('data_changed', { type: 'music' });
+      socket.emit('data_changed', { type: 'music', roomId: user.room_id });
       alert("Thêm bài hát thành công!");
       // Reset form
       setMusicTitle("");
@@ -267,11 +284,11 @@ const MainRoom = () => {
     if (window.confirm("Xóa bài nhạc này?")) {
       await deleteMusic(id);
       setMusicList(musicList.filter(m => m.id !== id));
-      socket.emit('data_changed', { type: 'music' });
+      socket.emit('data_changed', { type: 'music', roomId: user.room_id });
       if (currentTrack?.id === id) {
         setCurrentTrack(null);
         setIsPlaying(false);
-        socket.emit('music_action', { action: 'pause' });
+        socket.emit('music_action', { action: 'pause', roomId: user.room_id });
       }
     }
   };
@@ -281,18 +298,18 @@ const MainRoom = () => {
       if (isPlaying) {
         audioRef.current.pause();
         setIsPlaying(false);
-        socket.emit('music_action', { action: 'pause' });
+        socket.emit('music_action', { action: 'pause', roomId: user.room_id });
       } else {
         audioRef.current.play();
         setIsPlaying(true);
-        socket.emit('music_action', { action: 'play', track });
+        socket.emit('music_action', { action: 'play', track, roomId: user.room_id });
       }
     } else {
       setCurrentTrack(track);
       setIsPlaying(true);
       setTimeout(() => {
         if (audioRef.current) audioRef.current.play();
-        socket.emit('music_action', { action: 'play', track });
+        socket.emit('music_action', { action: 'play', track, roomId: user.room_id });
       }, 100);
     }
   };
@@ -306,6 +323,27 @@ const MainRoom = () => {
 
   return (
     <div className="static-house-wrapper" style={{ backgroundImage: getBackgroundImage() }}>
+      
+      {/* Profile Button */}
+      <button 
+        onClick={() => setActiveModal("Profile")} 
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          background: 'rgba(255, 255, 255, 0.8)',
+          border: 'none',
+          padding: '10px 20px',
+          borderRadius: '20px',
+          fontWeight: 'bold',
+          color: '#ff6b81',
+          cursor: 'pointer',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          zIndex: 1000
+        }}
+      >
+        🧑‍🤝‍🧑 Thông tin
+      </button>
       
       {currentTrack && (
         <audio 
@@ -323,24 +361,24 @@ const MainRoom = () => {
       {/* Living Room Items */}
       {currentFloor === 'living' && (
         <>
-          <DraggableItem icon="🧊" label="Tủ Lạnh" initialX={800} initialY={200} dbPosition={itemPositions["Tủ Lạnh"]} onClick={() => setActiveModal("Tủ Lạnh")} />
-          <DraggableItem icon="📱" label="Điện Thoại" initialX={700} initialY={500} dbPosition={itemPositions["Điện Thoại"]} onClick={() => setActiveModal("Điện Thoại")} />
-          <DraggableItem icon="🐱" label="Bé Mèo" initialX={450} initialY={600} dbPosition={itemPositions["Bé Mèo"]} onClick={() => alert("Meow~")} />
+          <DraggableItem icon="🧊" label="Tủ Lạnh" initialX={800} initialY={200} dbPosition={itemPositions["Tủ Lạnh"]} onClick={() => setActiveModal("Tủ Lạnh")} roomId={user.room_id} />
+          <DraggableItem icon="📱" label="Điện Thoại" initialX={700} initialY={500} dbPosition={itemPositions["Điện Thoại"]} onClick={() => setActiveModal("Điện Thoại")} roomId={user.room_id} />
+          <DraggableItem icon="🐱" label="Bé Mèo" initialX={450} initialY={600} dbPosition={itemPositions["Bé Mèo"]} onClick={() => alert("Meow~")} roomId={user.room_id} />
         </>
       )}
 
       {/* Bedroom Items */}
       {currentFloor === 'bedroom' && (
         <>
-          <DraggableItem icon="💌" label="Hòm Thư" initialX={400} initialY={500} dbPosition={itemPositions["Hòm Thư"]} onClick={() => setActiveModal("Thư")} />
-          <DraggableItem icon="🎧" label="Máy Nghe Nhạc" initialX={700} initialY={600} dbPosition={itemPositions["Máy Nghe Nhạc"]} onClick={() => setActiveModal("Máy Nghe Nhạc")} />
+          <DraggableItem icon="💌" label="Hòm Thư" initialX={400} initialY={500} dbPosition={itemPositions["Hòm Thư"]} onClick={() => setActiveModal("Thư")} roomId={user.room_id} />
+          <DraggableItem icon="🎧" label="Máy Nghe Nhạc" initialX={700} initialY={600} dbPosition={itemPositions["Máy Nghe Nhạc"]} onClick={() => setActiveModal("Máy Nghe Nhạc")} roomId={user.room_id} />
         </>
       )}
 
       {/* Rooftop Items */}
       {currentFloor === 'rooftop' && (
         <>
-          <DraggableItem icon="🎟️" label="Vé Xem Phim" initialX={400} initialY={350} dbPosition={itemPositions["Vé Xem Phim"]} onClick={() => setActiveModal("Vé Xem Phim")} />
+          <DraggableItem icon="🎟️" label="Vé Xem Phim" initialX={400} initialY={350} dbPosition={itemPositions["Vé Xem Phim"]} onClick={() => setActiveModal("Vé Xem Phim")} roomId={user.room_id} />
         </>
       )}
 
@@ -352,6 +390,48 @@ const MainRoom = () => {
       </div>
 
       {/* Modals */}
+      <Modal isOpen={activeModal === "Profile"} onClose={() => setActiveModal(null)} title="🧑‍🤝‍🧑 Thông tin ghép đôi">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
+          <div style={{ background: '#fff0f5', padding: '15px', borderRadius: '15px', width: '100%', border: '2px dashed var(--pastel-pink)' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#ff6b81' }}>💖 Bạn</h4>
+            <p style={{ margin: '5px 0' }}><strong>Tên:</strong> {user.display_name}</p>
+            <p style={{ margin: '5px 0' }}><strong>Email:</strong> {user.email}</p>
+            <p style={{ margin: '5px 0' }}><strong>Mã của bạn:</strong> <span style={{ background: 'white', padding: '2px 6px', borderRadius: '5px' }}>{user.couple_code}</span></p>
+          </div>
+          
+          <div style={{ background: '#fff0f5', padding: '15px', borderRadius: '15px', width: '100%', border: '2px dashed var(--pastel-pink)' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#ff6b81' }}>💞 Nửa kia</h4>
+            {partner ? (
+              <>
+                <p style={{ margin: '5px 0' }}><strong>Tên:</strong> {partner.display_name}</p>
+                <p style={{ margin: '5px 0' }}><strong>Email:</strong> {partner.email}</p>
+              </>
+            ) : (
+              <p style={{ color: '#888' }}>Đang chờ mảnh ghép còn lại...</p>
+            )}
+          </div>
+          
+          <button 
+            onClick={() => {
+              logout();
+              navigate('/login');
+            }}
+            style={{
+              padding: '10px 20px',
+              background: '#ff4757',
+              color: 'white',
+              border: 'none',
+              borderRadius: '20px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              marginTop: '10px'
+            }}
+          >
+            Đăng xuất
+          </button>
+        </div>
+      </Modal>
+
       <Modal isOpen={activeModal === "Thư"} onClose={() => setActiveModal(null)} title="💌 Hòm Thư">
         <textarea 
           className="letter-textarea" 

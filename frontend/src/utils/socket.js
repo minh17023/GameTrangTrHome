@@ -1,5 +1,5 @@
-import { io } from 'socket.io-client';
-import { API_URL } from './api/apiClient';
+import { io } from "socket.io-client";
+import { API_URL } from "../api/apiClient";
 
 // Lấy base URL từ API_URL (bỏ phần /api ở đuôi)
 const backendUrl = API_URL.replace('/api', '');

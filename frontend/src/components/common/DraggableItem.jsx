@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
 import { motion, useMotionValue } from 'framer-motion';
-import { updateItemPosition } from './api/itemApi';
-import { socket } from './socket';
-import './index.css';
+import { updateItemPosition } from '../../api/itemApi';
+import { socket } from '../../utils/socket';
+import '../../assets/css/index.css';
 
-const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick }) => {
+const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick, roomId }) => {
   const storageKey = `pos_${label}`;
   
   // Convert absolute pixels to percentage if it's old data
@@ -77,7 +77,7 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick })
   const handleDrag = (event, info) => {
     const pctX = x.get() / window.innerWidth;
     const pctY = y.get() / window.innerHeight;
-    socket.emit('item_dragging', { label, x: pctX, y: pctY });
+    socket.emit('item_dragging', { label, x: pctX, y: pctY, roomId });
   };
 
   const handleDragEnd = async () => {
@@ -85,7 +85,8 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick })
     const pctY = y.get() / window.innerHeight;
     
     localStorage.setItem(storageKey, JSON.stringify({ x: pctX, y: pctY }));
-    socket.emit('item_dragging', { label, x: pctX, y: pctY });
+    socket.emit('item_dragging', { label, x: pctX, y: pctY, roomId });
+
     
     try {
       await updateItemPosition(label, pctX, pctY);

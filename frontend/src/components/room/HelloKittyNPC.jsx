@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import '../../assets/css/index.css';
 
 const HelloKittyNPC = ({ targetObject, onTargetReached }) => {
   const [position, setPosition] = useState({ x: 50, y: 50 });

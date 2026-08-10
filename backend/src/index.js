@@ -33,20 +33,26 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
+  socket.on('join_room', (roomId) => {
+    if (roomId) {
+      socket.join(roomId);
+      console.log(`User ${socket.id} joined room ${roomId}`);
+    }
+  });
+
   socket.on('item_dragging', (data) => {
-    // data: { label: "Tủ Lạnh", x: 100, y: 200 }
-    // Phát tọa độ cho TẤT CẢ client khác TRỪ client đang gửi
-    socket.broadcast.emit('item_moved', data);
+    const { label, x, y, roomId } = data;
+    if (roomId) socket.to(roomId).emit('item_moved', data);
   });
 
   socket.on('data_changed', (data) => {
-    // data: { type: "fridge" | "movie" | "letter" | "phone" | "music" }
-    socket.broadcast.emit('data_changed', data);
+    const { type, roomId } = data;
+    if (roomId) socket.to(roomId).emit('data_changed', data);
   });
 
   socket.on('music_action', (data) => {
-    // data: { action: "play" | "pause", track: track_obj }
-    socket.broadcast.emit('music_action', data);
+    const { roomId } = data;
+    if (roomId) socket.to(roomId).emit('music_action', data);
   });
 
   socket.on('disconnect', () => {

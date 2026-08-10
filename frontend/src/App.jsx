@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
-import SplashScreen from './SplashScreen';
-import MainRoom from './MainRoom';
-import './index.css';
-import './sparkle.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import SplashScreen from './pages/SplashScreen';
+import MainRoom from './pages/MainRoom';
+import { AuthProvider } from './contexts/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Profile from './pages/Profile';
+import ProtectedRoute from './components/common/ProtectedRoute';
+import './assets/css/index.css';
+import './assets/css/sparkle.css';
 
-function App() {
+function AppContent() {
   const [isEntered, setIsEntered] = useState(false);
   const [sparkles, setSparkles] = useState([]);
 
@@ -23,16 +29,6 @@ function App() {
     return () => window.removeEventListener('click', handleGlobalClick);
   }, []);
 
-  const handleEnter = () => {
-    setIsEntered(true);
-    // Play audio when user clicks
-    const audio = document.getElementById('lofi-audio');
-    if (audio) {
-      audio.volume = 0.2; // Soft volume
-      audio.play().catch(e => console.log('Audio autoplay blocked', e));
-    }
-  };
-
   return (
     <>
       {/* Render Sparkles */}
@@ -46,13 +42,41 @@ function App() {
         </div>
       ))}
 
-      {/* Main Content */}
-      {!isEntered ? (
-        <SplashScreen onEnter={handleEnter} />
-      ) : (
-        <MainRoom />
-      )}
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              {!isEntered ? (
+                <SplashScreen onEnter={() => setIsEntered(true)} />
+              ) : (
+                <MainRoom />
+              )}
+            </ProtectedRoute>
+          } 
+        />
+      </Routes>
     </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
   );
 }
 
