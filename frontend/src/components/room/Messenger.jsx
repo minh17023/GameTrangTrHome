@@ -33,6 +33,11 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const callStateRef = useRef(callState);
+
+  useEffect(() => {
+    callStateRef.current = callState;
+  }, [callState]);
 
   useEffect(() => {
     loadMessages();
@@ -48,7 +53,7 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
 
     // Socket Listeners for WebRTC
     const handleIncomingCall = async ({ callerId, offer, isVideo }) => {
-      if (callState !== 'idle') return; // Bận
+      if (callStateRef.current !== 'idle') return; // Bận
       setIncomingCall({ callerId, offer, isVideo });
       setCallState('ringing');
     };
@@ -91,9 +96,14 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
       socket.off('call_answered', handleCallAnswered);
       socket.off('ice_candidate', handleIceCandidate);
       socket.off('call_ended', handleCallEnded);
-      endCallLocally(); // Cleanup on unmount
     };
-  }, [callState]);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      endCallLocally(); // Thực sự cleanup khi component unmount
+    };
+  }, []);
 
   const loadMessages = async () => {
     try {

@@ -71,6 +71,7 @@ const MainRoom = () => {
     fetchAllData();
     
     // Khởi động kết nối Socket.IO
+    socket.connect();
     if (user?.room_id) {
       socket.emit('join_room', { roomId: user.room_id, userId: user.id });
     }
@@ -142,6 +143,7 @@ const MainRoom = () => {
       socket.off('room_online_users', handleRoomOnlineUsers);
       socket.off('user_online', handleUserOnline);
       socket.off('user_offline', handleUserOffline);
+      socket.disconnect();
     };
   }, [user]);
 
