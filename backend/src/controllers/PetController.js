@@ -43,6 +43,23 @@ class PetController {
       const pet = await PetRepository.getPetByRoom(roomId);
       if (!pet) throw new Error("Chưa có thú cưng");
 
+      const action = req.body.action;
+      const today = new Date().toISOString().split('T')[0];
+      const actionKey = `limit_${req.user.id}_${action}_${today}`;
+      
+      let accessories = pet.accessories || [];
+      if (accessories.includes(actionKey)) {
+        let actionName = 'tương tác';
+        if (action === 'feed') actionName = 'cho ăn';
+        if (action === 'play') actionName = 'chơi đùa';
+        if (action === 'pet') actionName = 'vuốt ve';
+        throw new Error(`Bạn đã ${actionName} hôm nay rồi, hãy để nửa kia chăm sóc bé nhé!`);
+      }
+
+      // Cleanup old limits for this action & user
+      accessories = accessories.filter(a => !a.startsWith(`limit_${req.user.id}_${action}_`));
+      accessories.push(actionKey);
+
       const now = new Date();
       const lastInteracted = new Date(pet.last_interacted_at);
       
@@ -76,11 +93,12 @@ class PetController {
         exp: newExp,
         level: newLevel,
         streak: newStreak,
-        last_interacted_at: now.toISOString()
+        last_interacted_at: now.toISOString(),
+        accessories: accessories
       });
       
       const io = req.app.get('io');
-      if (io) io.to(roomId).emit('pet_interacted', { pet: updatedPet, action: req.body.action });
+      if (io) io.to(roomId).emit('pet_interacted', { pet: updatedPet, action: req.body.action, senderId: req.user.id });
       
       res.json({ pet: updatedPet });
     } catch (error) {
@@ -151,6 +169,47 @@ class PetController {
       
       const io = req.app.get('io');
       if (io) io.to(roomId).emit('pet_updated', updatedPet);
+      
+      res.json({ pet: updatedPet });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  async toggleSleep(req, res) {
+    try {
+      const roomId = req.user.room_id;
+      if (!roomId) throw new Error("Chưa ghép đôi");
+      
+      const { isSleeping } = req.body;
+      const pet = await PetRepository.getPetByRoom(roomId);
+      if (!pet) throw new Error("Chưa có thú cưng");
+
+      const today = new Date().toISOString().split('T')[0];
+      const actionKey = `limit_${req.user.id}_sleep_${today}`;
+
+      let accessories = pet.accessories || [];
+      if (accessories.includes(actionKey)) {
+        throw new Error("Bạn đã chỉnh giờ ngủ/thức hôm nay rồi, hãy để nửa kia làm nhé!");
+      }
+
+      // Cleanup old limits
+      accessories = accessories.filter(a => !a.startsWith(`limit_${req.user.id}_sleep_`));
+      accessories.push(actionKey);
+
+      if (isSleeping && !accessories.includes('sleep_mode')) {
+        accessories.push('sleep_mode');
+      } else if (!isSleeping && accessories.includes('sleep_mode')) {
+        accessories = accessories.filter(a => a !== 'sleep_mode');
+      }
+
+      const updatedPet = await PetRepository.updatePet(pet.id, { accessories });
+      
+      const io = req.app.get('io');
+      if (io) {
+        io.to(roomId).emit('pet_updated', updatedPet);
+        io.to(roomId).emit('pet_interacted', { pet: updatedPet, action: isSleeping ? 'sleep' : 'wake', senderId: req.user.id });
+      }
       
       res.json({ pet: updatedPet });
     } catch (error) {

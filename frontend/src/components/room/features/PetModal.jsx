@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../../common/Modal';
 import { toast } from 'react-hot-toast';
-import { adoptPet, interactPet, recoverStreak, equipAccessory } from '../../../api/petApi';
+import { adoptPet, interactPet, recoverStreak, equipAccessory, toggleSleep } from '../../../api/petApi';
 
 const PetModal = ({ isOpen, onClose, user, socket, pet, setPet }) => {
   const [tab, setTab] = useState('interact'); // 'interact' | 'wardrobe'
@@ -9,10 +9,24 @@ const PetModal = ({ isOpen, onClose, user, socket, pet, setPet }) => {
   const [adoptName, setAdoptName] = useState('');
   const [adoptType, setAdoptType] = useState('cat');
 
-  // Kiểm tra giờ đi ngủ (23:00 - 06:00)
   const isSleeping = () => {
-    const hour = new Date().getHours();
-    return hour >= 23 || hour < 6;
+    return pet?.accessories?.includes('sleep_mode');
+  };
+
+  const handleToggleSleep = async () => {
+    try {
+      const newState = !isSleeping();
+      const updatedPet = await toggleSleep(newState);
+      setPet(updatedPet);
+      if (newState) {
+        toast.success("Bé đã đi ngủ 🌙");
+      } else {
+        toast.success("Đã đánh thức bé ☀️");
+      }
+      socket.emit('data_changed', { type: 'pet_floor_changed', floor: 'living', roomId: user?.room_id }); // Just to trigger a sync broadcast
+    } catch (e) {
+      toast.error(e.message || "Lỗi thay đổi trạng thái");
+    }
   };
 
   const getPetImage = (type, level) => {
@@ -153,8 +167,14 @@ const PetModal = ({ isOpen, onClose, user, socket, pet, setPet }) => {
         {/* Pet Display Area */}
         <div style={{ position: 'relative', width: '100%', height: '300px', background: '#fdfd96', borderRadius: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', boxShadow: 'inset 0 0 20px rgba(0,0,0,0.05)' }}>
           {isSleeping() && (
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,50,0.6)', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontSize: '1.5rem', fontWeight: 'bold' }}>
-              Bé đang ngủ khò khò... 💤
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,50,0.6)', zIndex: 10, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: 'white', fontSize: '1.5rem', fontWeight: 'bold' }}>
+              <div>Bé đang ngủ khò khò... 💤</div>
+              <button 
+                onClick={handleToggleSleep}
+                style={{ marginTop: '15px', padding: '10px 20px', background: '#feca57', border: 'none', borderRadius: '15px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}
+              >
+                Đánh Thức Bé ☀️
+              </button>
             </div>
           )}
           
@@ -193,17 +213,34 @@ const PetModal = ({ isOpen, onClose, user, socket, pet, setPet }) => {
         {/* Tab Content */}
         <div style={{ marginTop: '20px' }}>
           {tab === 'interact' && (
-            <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-              <button onClick={() => handleInteract('feed')} style={{ background: '#fff0f5', border: '2px solid #ffb6c1', borderRadius: '15px', padding: '15px', fontSize: '1.2rem', cursor: 'pointer', width: '30%' }}>
-                🍖 Cho Ăn<br/><small style={{color: '#ff6b81'}}>+10 EXP</small>
-              </button>
-              <button onClick={() => handleInteract('play')} style={{ background: '#e0f7fa', border: '2px solid #b2ebf2', borderRadius: '15px', padding: '15px', fontSize: '1.2rem', cursor: 'pointer', width: '30%' }}>
-                🧶 Chơi Đùa<br/><small style={{color: '#00acc1'}}>+10 EXP</small>
-              </button>
-              <button onClick={() => handleInteract('pet')} style={{ background: '#f3e5f5', border: '2px solid #ce93d8', borderRadius: '15px', padding: '15px', fontSize: '1.2rem', cursor: 'pointer', width: '30%' }}>
-                ✋ Vuốt Ve<br/><small style={{color: '#8e24aa'}}>+10 EXP</small>
-              </button>
-            </div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button 
+                  onClick={() => handleInteract('feed')}
+                  style={{ flex: 1, padding: '15px', background: '#ffeaa7', border: '2px solid #fdcb6e', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold', color: '#d63031', cursor: 'pointer', transition: 'transform 0.1s' }}
+                >
+                  🍖 Cho Ăn <br/><small style={{ color: '#0984e3' }}>+10 EXP</small>
+                </button>
+                <button 
+                  onClick={() => handleInteract('play')}
+                  style={{ flex: 1, padding: '15px', background: '#81ecec', border: '2px solid #00cec9', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold', color: '#0984e3', cursor: 'pointer', transition: 'transform 0.1s' }}
+                >
+                  🧶 Chơi Đùa <br/><small style={{ color: '#0984e3' }}>+10 EXP</small>
+                </button>
+                <button 
+                  onClick={() => handleInteract('pet')}
+                  style={{ flex: 1, padding: '15px', background: '#fd79a8', border: '2px solid #e84393', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold', color: '#fff', cursor: 'pointer', transition: 'transform 0.1s' }}
+                >
+                  👋 Vuốt Ve <br/><small style={{ color: '#fff' }}>+10 EXP</small>
+                </button>
+                
+                <button 
+                  onClick={handleToggleSleep}
+                  style={{ flex: 0.5, padding: '15px', background: '#a29bfe', border: '2px solid #6c5ce7', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold', color: '#fff', cursor: 'pointer', transition: 'transform 0.1s' }}
+                  title="Cho bé đi ngủ"
+                >
+                  🌙 Ngủ
+                </button>
+              </div>
           )}
 
           {tab === 'wardrobe' && (

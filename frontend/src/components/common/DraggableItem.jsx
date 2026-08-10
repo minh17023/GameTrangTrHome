@@ -4,7 +4,7 @@ import { updateItemPosition } from '../../api/itemApi';
 import { socket } from '../../utils/socket';
 import '../../assets/css/index.css';
 
-const DraggableItem = ({ id, icon, label, initialX, initialY, dbPosition, onClick, onDragStart, roomId, blendMode }) => {
+const DraggableItem = ({ id, icon, label, initialX, initialY, dbPosition, onClick, onDragStart, onPositionChange, roomId, blendMode }) => {
   const itemKey = id || label;
   const storageKey = `pos_${itemKey}`;
   const isDragging = React.useRef(false);
@@ -97,8 +97,10 @@ const DraggableItem = ({ id, icon, label, initialX, initialY, dbPosition, onClic
     
     localStorage.setItem(storageKey, JSON.stringify({ x: pctX, y: pctY }));
     socket.emit('item_dragging', { label: itemKey, x: pctX, y: pctY, roomId });
+    if (onPositionChange) {
+      onPositionChange(itemKey, pctX, pctY);
+    }
 
-    
     try {
       await updateItemPosition(itemKey, pctX, pctY);
     } catch (e) {

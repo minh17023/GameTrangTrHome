@@ -28,6 +28,14 @@ export const recoverStreak = async () => {
   return data.pet;
 };
 
+export const toggleSleep = async (isSleeping) => {
+  const data = await fetchApi('/pets/sleep', {
+    method: 'POST',
+    body: JSON.stringify({ isSleeping })
+  });
+  return data.pet;
+};
+
 export const equipAccessory = async (accessoryId) => {
   const data = await fetchApi('/pets/equip', {
     method: 'POST',

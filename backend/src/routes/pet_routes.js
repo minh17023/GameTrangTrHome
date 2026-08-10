@@ -11,5 +11,6 @@ router.post('/adopt', PetController.adoptPet);
 router.post('/interact', PetController.interact);
 router.post('/recover', PetController.recoverStreak);
 router.post('/equip', PetController.equipAccessory);
+router.post('/sleep', PetController.toggleSleep);
 
 export default router;

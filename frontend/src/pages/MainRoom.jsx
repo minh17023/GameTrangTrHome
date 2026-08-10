@@ -177,10 +177,14 @@ const MainRoom = () => {
 
     const handlePetInteracted = (data) => {
       setPet(data.pet);
+      if (data.senderId === user.id) return;
+
       let actionName = 'vừa tương tác với bé';
       if (data.action === 'feed') actionName = 'vừa cho bé ăn 🍖';
       if (data.action === 'play') actionName = 'vừa chơi đùa với bé 🧶';
       if (data.action === 'pet') actionName = 'vừa vuốt ve bé 🥰';
+      if (data.action === 'sleep') actionName = 'vừa cho bé đi ngủ 🌙';
+      if (data.action === 'wake') actionName = 'vừa đánh thức bé ☀️';
       toast(`Nửa kia ${actionName}!`, { icon: '🐾' });
     };
 
@@ -368,6 +372,13 @@ const MainRoom = () => {
     socket.emit('data_changed', { type: 'pet_floor_changed', floor, roomId: user.room_id });
   };
 
+  const handleLocalItemMoved = (label, x, y) => {
+    setItemPositions(prev => ({
+      ...prev,
+      [label]: { x, y }
+    }));
+  };
+
   return (
     <div className="static-house-wrapper" style={{ backgroundImage: getBackgroundImage() }}>
       
@@ -400,25 +411,25 @@ const MainRoom = () => {
       {/* Living Room Items */}
       {currentFloor === 'living' && (
         <>
-          <DraggableItem icon="📺" label="Tivi" initialX={200} initialY={400} dbPosition={itemPositions["Tivi"]} onClick={() => { setActiveModal("Tivi"); socket.emit('sync_tv_state', { roomId: user.room_id, action: 'open' }); }} roomId={user.room_id} />
-          <DraggableItem icon="🧊" label="Tủ Lạnh" initialX={800} initialY={200} dbPosition={itemPositions["Tủ Lạnh"]} onClick={() => setActiveModal("Tủ Lạnh")} roomId={user.room_id} />
-          <DraggableItem icon="📱" label="Điện Thoại" initialX={700} initialY={500} dbPosition={itemPositions["Điện Thoại"]} onClick={() => setActiveModal("Điện Thoại")} roomId={user.room_id} />
+          <DraggableItem icon="📺" label="Tivi" initialX={200} initialY={400} dbPosition={itemPositions["Tivi"]} onClick={() => { setActiveModal("Tivi"); socket.emit('sync_tv_state', { roomId: user.room_id, action: 'open' }); }} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
+          <DraggableItem icon="🧊" label="Tủ Lạnh" initialX={800} initialY={200} dbPosition={itemPositions["Tủ Lạnh"]} onClick={() => setActiveModal("Tủ Lạnh")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
+          <DraggableItem icon="📱" label="Điện Thoại" initialX={700} initialY={500} dbPosition={itemPositions["Điện Thoại"]} onClick={() => setActiveModal("Điện Thoại")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
         </>
       )}
 
       {/* Bedroom Items */}
       {currentFloor === 'bedroom' && (
         <>
-          <DraggableItem icon="💌" label="Hòm Thư" initialX={400} initialY={500} dbPosition={itemPositions["Hòm Thư"]} onClick={() => setActiveModal("Thư")} roomId={user.room_id} />
-          <DraggableItem icon="🎧" label="Máy Nghe Nhạc" initialX={700} initialY={600} dbPosition={itemPositions["Máy Nghe Nhạc"]} onClick={() => setActiveModal("Máy Nghe Nhạc")} roomId={user.room_id} />
-          <DraggableItem icon="📷" label="Máy Ảnh" initialX={550} initialY={400} dbPosition={itemPositions["Máy Ảnh"]} onClick={() => setActiveModal("Máy Ảnh")} roomId={user.room_id} />
+          <DraggableItem icon="💌" label="Hòm Thư" initialX={400} initialY={500} dbPosition={itemPositions["Hòm Thư"]} onClick={() => setActiveModal("Thư")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
+          <DraggableItem icon="🎧" label="Máy Nghe Nhạc" initialX={700} initialY={600} dbPosition={itemPositions["Máy Nghe Nhạc"]} onClick={() => setActiveModal("Máy Nghe Nhạc")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
+          <DraggableItem icon="📷" label="Máy Ảnh" initialX={550} initialY={400} dbPosition={itemPositions["Máy Ảnh"]} onClick={() => setActiveModal("Máy Ảnh")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
         </>
       )}
 
       {/* Rooftop Items */}
       {currentFloor === 'rooftop' && (
         <>
-          <DraggableItem icon="🎟️" label="Vé Xem Phim" initialX={400} initialY={350} dbPosition={itemPositions["Vé Xem Phim"]} onClick={() => setActiveModal("Vé Xem Phim")} roomId={user.room_id} />
+          <DraggableItem icon="🎟️" label="Vé Xem Phim" initialX={400} initialY={350} dbPosition={itemPositions["Vé Xem Phim"]} onClick={() => setActiveModal("Vé Xem Phim")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
         </>
       )}
 
@@ -439,6 +450,7 @@ const MainRoom = () => {
           dbPosition={itemPositions["Thú Cưng"]} 
           onClick={() => { setActiveModal("Thú Cưng"); handlePetAction(); }} 
           onDragStart={handlePetAction}
+          onPositionChange={handleLocalItemMoved}
           roomId={user.room_id} 
         />
       )}
