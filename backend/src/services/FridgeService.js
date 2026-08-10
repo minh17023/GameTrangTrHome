@@ -2,7 +2,7 @@ import FridgeRepository from '../repositories/FridgeRepository.js';
 
 class FridgeService {
   async getItems() {
-    return await FridgeRepository.getAllItems();
+    return await FridgeRepository.getItems();
   }
 
   async addItem(name) {

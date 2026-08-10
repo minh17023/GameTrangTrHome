@@ -3,8 +3,8 @@ import AuthService from '../services/AuthService.js';
 class AuthController {
   async register(req, res) {
     try {
-      const { email, password, displayName } = req.body;
-      const data = await AuthService.sendOTPRequest(email, password, displayName);
+      const { email, password, displayName, gender } = req.body;
+      const data = await AuthService.sendOTPRequest(email, password, displayName, gender);
       res.json(data);
     } catch (error) {
       res.status(400).json({ error: error.message });

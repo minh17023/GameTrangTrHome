@@ -12,7 +12,7 @@ const otpStore = new Map();
 const resetStore = new Map();
 
 class AuthService {
-  async sendOTPRequest(email, password, displayName) {
+  async sendOTPRequest(email, password, displayName, gender = 'Nữ') {
     if (!email || !password || !displayName) {
       throw new Error('Vui lòng điền đủ thông tin');
     }
@@ -30,7 +30,8 @@ class AuthService {
       code: otp_code,
       expires: otp_expires,
       password,
-      displayName
+      displayName,
+      gender
     });
 
     // Send OTP email
@@ -65,6 +66,7 @@ class AuthService {
       email,
       password_hash,
       display_name: otpData.displayName,
+      gender: otpData.gender,
       couple_code,
       is_verified: true
     });
@@ -167,6 +169,7 @@ class AuthService {
         id: user.id,
         email: user.email,
         display_name: user.display_name,
+        gender: user.gender,
         couple_code: user.couple_code,
         room_id: user.room_id
       }

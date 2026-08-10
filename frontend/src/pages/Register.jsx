@@ -9,6 +9,7 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [gender, setGender] = useState('Nữ'); // Thêm state gender, mặc định Nữ
   const [otpCode, setOtpCode] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
@@ -22,7 +23,7 @@ const Register = () => {
     }
     setIsSending(true);
     try {
-      const res = await axios.post(`${API_URL}/auth/register`, { email, password, displayName });
+      const res = await axios.post(`${API_URL}/auth/register`, { email, password, displayName, gender });
       toast.success('Đã gửi mã xác nhận về email của bạn!');
       setCodeSent(true);
     } catch (err) {
@@ -68,6 +69,16 @@ const Register = () => {
             required
             disabled={codeSent}
           />
+          <select 
+            value={gender} 
+            onChange={e => setGender(e.target.value)}
+            disabled={codeSent}
+            style={{ padding: '10px', borderRadius: '10px', border: '1px solid #ffb6c1', background: 'white', color: '#555' }}
+          >
+            <option value="Nữ">Nữ 👧</option>
+            <option value="Nam">Nam 👦</option>
+            <option value="Khác">Khác 🌈</option>
+          </select>
           <input 
             type="email" 
             placeholder="Email" 
