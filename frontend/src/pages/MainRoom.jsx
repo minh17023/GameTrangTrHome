@@ -11,13 +11,13 @@ import { getPhoneMessages, addPhoneMessage, updatePhoneMessage, deletePhoneMessa
 import { getMusic, addMusic, updateMusic, deleteMusic } from '../api/musicApi';
 import { uploadFile } from '../api/uploadApi';
 import { getAllItems } from '../api/itemApi';
-import { getPartner } from '../api/authApi';
+import { getPartner, updateProfile } from '../api/authApi';
 import { socket } from '../utils/socket';
 import { toast } from 'react-hot-toast';
 import '../assets/css/index.css';
 
 const MainRoom = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [currentFloor, setCurrentFloor] = useState('living');
@@ -50,6 +50,12 @@ const MainRoom = () => {
 
   // Profile State
   const [partner, setPartner] = useState(null);
+  
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState(user?.display_name || '');
+  const [editGender, setEditGender] = useState(user?.gender || 'Nữ');
+  const [editAvatar, setEditAvatar] = useState(user?.avatar_url || '');
+  const [isUploadingProfilePic, setIsUploadingProfilePic] = useState(false);
 
   useEffect(() => {
     if (!user || !user.room_id) {
@@ -299,6 +305,18 @@ const MainRoom = () => {
     }
   };
 
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      const data = await updateProfile({ displayName: editName, gender: editGender, avatarUrl: editAvatar });
+      setUser(data.user);
+      toast.success('Cập nhật hồ sơ thành công!');
+      setIsEditingProfile(false);
+    } catch (err) {
+      toast.error('Lỗi cập nhật hồ sơ');
+    }
+  };
+
   const handleDeleteMusic = async (id) => {
     if (window.confirm("Xóa bài nhạc này?")) {
       await deleteMusic(id);
@@ -411,23 +429,81 @@ const MainRoom = () => {
       {/* Modals */}
       <Modal isOpen={activeModal === "Profile"} onClose={() => setActiveModal(null)} title="🧑‍🤝‍🧑 Thông tin ghép đôi">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
-          <div style={{ background: '#fff0f5', padding: '15px', borderRadius: '15px', width: '100%', border: '2px dashed var(--pastel-pink)' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#ff6b81' }}>💖 Bạn</h4>
-            <p style={{ margin: '5px 0' }}><strong>Tên:</strong> {user.display_name}</p>
-            <p style={{ margin: '5px 0' }}><strong>Email:</strong> {user.email}</p>
-            <p style={{ margin: '5px 0' }}><strong>Mã của bạn:</strong> <span style={{ background: 'white', padding: '2px 6px', borderRadius: '5px' }}>{user.couple_code}</span></p>
-          </div>
           
-          <div style={{ background: '#fff0f5', padding: '15px', borderRadius: '15px', width: '100%', border: '2px dashed var(--pastel-pink)' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#ff6b81' }}>💞 Nửa kia</h4>
-            {partner ? (
-              <>
-                <p style={{ margin: '5px 0' }}><strong>Tên:</strong> {partner.display_name}</p>
-                <p style={{ margin: '5px 0' }}><strong>Email:</strong> {partner.email}</p>
-              </>
-            ) : (
-              <p style={{ color: '#888' }}>Đang chờ mảnh ghép còn lại...</p>
-            )}
+          <div style={{ background: '#fff0f5', padding: '15px', borderRadius: '15px', width: '100%', border: '2px dashed var(--pastel-pink)', display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div 
+              style={{ 
+                width: '60px', height: '60px', borderRadius: '50%', background: '#ffb6c1', 
+                backgroundImage: user?.avatar_url ? `url(${user.avatar_url})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center',
+                display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', fontSize: '20px', border: '2px solid white'
+              }}
+            >
+              {!user?.avatar_url && (user?.display_name ? user.display_name.charAt(0).toUpperCase() : '♥')}
+            </div>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ margin: '0 0 5px 0', color: '#ff6b81' }}>💖 Bạn ({user.gender || 'Nữ'})</h4>
+              <p style={{ margin: '2px 0', fontSize: '0.9rem' }}><strong>Tên:</strong> {user.display_name}</p>
+              <p style={{ margin: '2px 0', fontSize: '0.9rem' }}><strong>Mã:</strong> <span style={{ background: 'white', padding: '2px 6px', borderRadius: '5px' }}>{user.couple_code}</span></p>
+            </div>
+            <button onClick={() => setIsEditingProfile(!isEditingProfile)} style={{ background: 'transparent', border: '1px solid #ffb6c1', color: '#ff6b81', borderRadius: '10px', padding: '5px 10px', cursor: 'pointer', fontSize: '0.8rem' }}>
+              {isEditingProfile ? 'Hủy' : '✏️ Sửa'}
+            </button>
+          </div>
+
+          {isEditingProfile && (
+            <form onSubmit={handleUpdateProfile} style={{ background: '#fdfd96', padding: '15px', borderRadius: '15px', width: '100%', display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Tên hiển thị:</label>
+              <input type="text" value={editName} onChange={e => setEditName(e.target.value)} required style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ccc' }} />
+              
+              <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Giới tính:</label>
+              <select value={editGender} onChange={e => setEditGender(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ccc' }}>
+                <option value="Nữ">Nữ 👧</option>
+                <option value="Nam">Nam 👦</option>
+                <option value="Khác">Khác 🌈</option>
+              </select>
+
+              <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Đổi ảnh đại diện:</label>
+              <input type="file" accept="image/*" disabled={isUploadingProfilePic} onChange={async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  setIsUploadingProfilePic(true);
+                  toast.loading("Đang tải ảnh...", { id: 'uploadAvatar' });
+                  try {
+                    const res = await uploadFile(file);
+                    setEditAvatar(res.url);
+                    toast.success("Tải ảnh thành công!", { id: 'uploadAvatar' });
+                  } catch (err) { toast.error("Lỗi tải ảnh", { id: 'uploadAvatar' }); }
+                  finally { setIsUploadingProfilePic(false); }
+                }
+              }} style={{ fontSize: '0.8rem' }} />
+
+              <button type="submit" disabled={isUploadingProfilePic} style={{ background: '#ff6b81', color: 'white', padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+                Lưu Thay Đổi
+              </button>
+            </form>
+          )}
+          
+          <div style={{ background: '#fff0f5', padding: '15px', borderRadius: '15px', width: '100%', border: '2px dashed var(--pastel-pink)', display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div 
+              style={{ 
+                width: '60px', height: '60px', borderRadius: '50%', background: '#ffb6c1', 
+                backgroundImage: partner?.avatar_url ? `url(${partner.avatar_url})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center',
+                display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', fontSize: '20px', border: '2px solid white'
+              }}
+            >
+              {!partner?.avatar_url && (partner?.display_name ? partner.display_name.charAt(0).toUpperCase() : '♥')}
+            </div>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ margin: '0 0 5px 0', color: '#ff6b81' }}>💞 Nửa kia {partner?.gender ? `(${partner.gender})` : ''}</h4>
+              {partner ? (
+                <>
+                  <p style={{ margin: '2px 0', fontSize: '0.9rem' }}><strong>Tên:</strong> {partner.display_name}</p>
+                  <p style={{ margin: '2px 0', fontSize: '0.9rem' }}><strong>Email:</strong> {partner.email}</p>
+                </>
+              ) : (
+                <p style={{ color: '#888', fontSize: '0.9rem' }}>Đang chờ mảnh ghép còn lại...</p>
+              )}
+            </div>
           </div>
           
           <button 

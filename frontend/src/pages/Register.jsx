@@ -4,6 +4,8 @@ import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
 import { API_URL } from '../api/apiClient';
 import { toast } from 'react-hot-toast';
+import { uploadFile } from '../api/uploadApi';
+import { verifyOTP } from '../api/authApi';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -11,6 +13,8 @@ const Register = () => {
   const [displayName, setDisplayName] = useState('');
   const [gender, setGender] = useState('Nữ'); // Thêm state gender, mặc định Nữ
   const [otpCode, setOtpCode] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
   const { login } = useContext(AuthContext);
@@ -23,7 +27,7 @@ const Register = () => {
     }
     setIsSending(true);
     try {
-      const res = await axios.post(`${API_URL}/auth/register`, { email, password, displayName, gender });
+      const res = await axios.post(`${API_URL}/auth/register`, { email, password, displayName, gender, avatarUrl });
       toast.success('Đã gửi mã xác nhận về email của bạn!');
       setCodeSent(true);
     } catch (err) {
@@ -60,6 +64,44 @@ const Register = () => {
         <h2 style={{ color: '#ff6b81', fontFamily: 'Quicksand' }}>Đăng Ký 💕</h2>
 
         <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div 
+              style={{ 
+                width: '60px', height: '60px', borderRadius: '50%', background: '#ffb6c1', 
+                backgroundImage: avatarUrl ? `url(${avatarUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center',
+                display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold'
+              }}
+            >
+              {!avatarUrl && 'Ảnh'}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '0.8rem', color: '#555' }}>Ảnh đại diện (không bắt buộc)</label>
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    setIsUploading(true);
+                    toast.loading("Đang tải ảnh...", { id: 'uploadAvatar' });
+                    try {
+                      const res = await uploadFile(file);
+                      setAvatarUrl(res.url);
+                      toast.success("Tải ảnh thành công!", { id: 'uploadAvatar' });
+                    } catch (err) {
+                      toast.error("Lỗi tải ảnh!", { id: 'uploadAvatar' });
+                    } finally {
+                      setIsUploading(false);
+                    }
+                  }
+                }}
+                disabled={codeSent || isUploading}
+                style={{ width: '100%', fontSize: '0.9rem' }}
+              />
+            </div>
+          </div>
+
           <input 
             type="text" 
             placeholder="Tên của bạn" 

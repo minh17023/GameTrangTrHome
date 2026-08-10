@@ -6,6 +6,7 @@ import '../../assets/css/index.css';
 
 const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick, roomId }) => {
   const storageKey = `pos_${label}`;
+  const isDragging = React.useRef(false);
   
   // Convert absolute pixels to percentage if it's old data
   const parseCoord = (val, max, isX) => {
@@ -80,7 +81,15 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick, r
     socket.emit('item_dragging', { label, x: pctX, y: pctY, roomId });
   };
 
+  const handleDragStart = () => {
+    isDragging.current = true;
+  };
+
   const handleDragEnd = async () => {
+    setTimeout(() => {
+      isDragging.current = false;
+    }, 150);
+
     const pctX = x.get() / window.innerWidth;
     const pctY = y.get() / window.innerHeight;
     
@@ -102,8 +111,14 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick, r
       style={{ x, y, position: 'absolute', cursor: 'grab', zIndex: 10 }}
       whileTap={{ cursor: 'grabbing', scale: 0.9 }}
       whileHover={{ scale: 1.1, filter: 'drop-shadow(0px 0px 10px rgba(255,255,255,0.8))' }}
-      onClick={onClick}
-      onDrag={handleDrag}
+      onClick={(e) => {
+        if (isDragging.current) {
+          e.stopPropagation();
+          return;
+        }
+        if (onClick) onClick(e);
+      }}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       className="draggable-item-2d"
     >

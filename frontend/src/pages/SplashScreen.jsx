@@ -40,7 +40,7 @@ const SplashScreen = ({ onEnter }) => {
       <audio id="lofi-audio" loop src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3" />
       
       <div className="welcome-text" style={{ fontSize: '2.5rem' }}>
-        {partner ? `Chào mừng đến với ngôi nhà của ${user?.display_name || ''} và ${partner?.display_name || ''} 🌸` : `welcome home, ${user?.display_name || ''} 🌸`}
+        {partner ? `Welcome home,${user?.display_name || ''} và ${partner?.display_name || ''} 🌸` : `welcome home, ${user?.display_name || ''} 🌸`}
         <div style={{ fontSize: '1rem', marginTop: '10px', textAlign: 'center', fontWeight: 'normal' }}>
           (click để vào phòng)
         </div>

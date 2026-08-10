@@ -22,6 +22,6 @@ router.use('/letters', authMiddleware, letterRoutes);
 router.use('/items', authMiddleware, itemRoutes);
 
 // Upload API có thể bảo vệ hoặc public
-router.use('/upload', authMiddleware, uploadRoutes);
+router.use('/upload', uploadRoutes);
 
 export default router;

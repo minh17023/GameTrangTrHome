@@ -2,7 +2,8 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
-import { getPairRequests, acceptPairRequest } from '../api/authApi';
+import { getPairRequests, acceptPairRequest, updateProfile } from '../api/authApi';
+import { uploadFile } from '../api/uploadApi';
 import { API_URL } from '../api/apiClient';
 import { socket } from '../utils/socket';
 import { toast } from 'react-hot-toast';
@@ -11,6 +12,14 @@ const Profile = () => {
   const { user, logout, setUser } = useContext(AuthContext);
   const [partnerCode, setPartnerCode] = useState('');
   const [requests, setRequests] = useState([]);
+  
+  // States for editing profile
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(user?.display_name || '');
+  const [editGender, setEditGender] = useState(user?.gender || 'Nữ');
+  const [editAvatar, setEditAvatar] = useState(user?.avatar_url || '');
+  const [isUploading, setIsUploading] = useState(false);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -67,6 +76,18 @@ const Profile = () => {
     }
   };
 
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      const data = await updateProfile({ displayName: editName, gender: editGender, avatarUrl: editAvatar });
+      setUser(data.user);
+      toast.success('Cập nhật hồ sơ thành công!');
+      setIsEditing(false);
+    } catch (err) {
+      toast.error('Lỗi cập nhật hồ sơ');
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -75,7 +96,77 @@ const Profile = () => {
   return (
     <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#ffe4e1' }}>
       <div style={{ background: 'white', padding: '40px', borderRadius: '20px', width: '400px', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', maxHeight: '90vh', overflowY: 'auto' }}>
-        <h2 style={{ color: '#ff6b81', fontFamily: 'Quicksand' }}>Xin chào, {user?.display_name}! 🎀</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '10px' }}>
+          <div 
+            style={{ 
+              width: '80px', height: '80px', borderRadius: '50%', background: '#ffb6c1', 
+              backgroundImage: user?.avatar_url ? `url(${user.avatar_url})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center',
+              display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', fontSize: '24px',
+              border: '4px solid #ffd1dc'
+            }}
+          >
+            {!user?.avatar_url && (user?.display_name ? user.display_name.charAt(0).toUpperCase() : '♥')}
+          </div>
+          <h2 style={{ color: '#ff6b81', fontFamily: 'Quicksand', margin: 0 }}>Xin chào, {user?.display_name}! 🎀</h2>
+          <button 
+            onClick={() => setIsEditing(!isEditing)} 
+            style={{ background: 'transparent', border: '1px solid #ffb6c1', color: '#ff6b81', borderRadius: '20px', padding: '5px 15px', cursor: 'pointer', fontSize: '0.8rem' }}
+          >
+            {isEditing ? 'Hủy sửa' : '✏️ Sửa hồ sơ'}
+          </button>
+        </div>
+
+        {isEditing && (
+          <form onSubmit={handleUpdateProfile} style={{ background: '#fff0f5', padding: '20px', borderRadius: '15px', marginTop: '20px', border: '1px solid #ffd1dc', display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left' }}>
+            <label style={{ fontSize: '0.9rem', color: '#ff6b81', fontWeight: 'bold' }}>Tên hiển thị:</label>
+            <input 
+              type="text" 
+              value={editName} 
+              onChange={e => setEditName(e.target.value)} 
+              required 
+              style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ffb6c1' }}
+            />
+            
+            <label style={{ fontSize: '0.9rem', color: '#ff6b81', fontWeight: 'bold' }}>Giới tính:</label>
+            <select 
+              value={editGender} 
+              onChange={e => setEditGender(e.target.value)}
+              style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ffb6c1', background: 'white' }}
+            >
+              <option value="Nữ">Nữ 👧</option>
+              <option value="Nam">Nam 👦</option>
+              <option value="Khác">Khác 🌈</option>
+            </select>
+
+            <label style={{ fontSize: '0.9rem', color: '#ff6b81', fontWeight: 'bold' }}>Ảnh đại diện:</label>
+            <input 
+              type="file" 
+              accept="image/*"
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  setIsUploading(true);
+                  toast.loading("Đang tải ảnh...", { id: 'uploadAvatar' });
+                  try {
+                    const res = await uploadFile(file);
+                    setEditAvatar(res.url);
+                    toast.success("Tải ảnh thành công!", { id: 'uploadAvatar' });
+                  } catch (err) {
+                    toast.error("Lỗi tải ảnh!", { id: 'uploadAvatar' });
+                  } finally {
+                    setIsUploading(false);
+                  }
+                }
+              }}
+              style={{ fontSize: '0.8rem' }}
+              disabled={isUploading}
+            />
+
+            <button type="submit" disabled={isUploading} style={{ background: '#ff6b81', color: 'white', padding: '10px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: isUploading ? 'not-allowed' : 'pointer', marginTop: '10px' }}>
+              Lưu thay đổi
+            </button>
+          </form>
+        )}
         
         <div style={{ margin: '20px 0', padding: '15px', background: '#fdfd96', borderRadius: '15px' }}>
           <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>Mã ghép đôi của bạn:</p>

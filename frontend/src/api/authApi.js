@@ -39,3 +39,11 @@ export const resetPassword = async (email, code, newPassword) => {
   const { data } = await axios.post(`${API_URL}/auth/reset-password`, { email, code, newPassword });
   return data;
 };
+
+export const updateProfile = async (profileData) => {
+  const token = localStorage.getItem('token');
+  const { data } = await axios.put(`${API_URL}/auth/me`, profileData, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return data;
+};

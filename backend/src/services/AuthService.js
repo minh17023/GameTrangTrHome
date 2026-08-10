@@ -12,7 +12,7 @@ const otpStore = new Map();
 const resetStore = new Map();
 
 class AuthService {
-  async sendOTPRequest(email, password, displayName, gender = 'Nữ') {
+  async sendOTPRequest(email, password, displayName, gender = 'Nữ', avatarUrl = null) {
     if (!email || !password || !displayName) {
       throw new Error('Vui lòng điền đủ thông tin');
     }
@@ -31,7 +31,8 @@ class AuthService {
       expires: otp_expires,
       password,
       displayName,
-      gender
+      gender,
+      avatarUrl
     });
 
     // Send OTP email
@@ -67,6 +68,7 @@ class AuthService {
       password_hash,
       display_name: otpData.displayName,
       gender: otpData.gender,
+      avatar_url: otpData.avatarUrl,
       couple_code,
       is_verified: true
     });
@@ -156,6 +158,16 @@ class AuthService {
     return await AuthRepository.getPartnerByRoomId(currentUser.room_id, currentUser.id);
   }
 
+  async updateProfile(userId, displayName, gender, avatarUrl) {
+    const updateData = {};
+    if (displayName) updateData.display_name = displayName;
+    if (gender) updateData.gender = gender;
+    if (avatarUrl !== undefined) updateData.avatar_url = avatarUrl;
+    
+    const updatedUser = await AuthRepository.updateUser(userId, updateData);
+    return this.generateAuthResponse(updatedUser);
+  }
+
   generateAuthResponse(user) {
     const token = jwt.sign(
       { id: user.id, email: user.email, room_id: user.room_id },
@@ -170,6 +182,7 @@ class AuthService {
         email: user.email,
         display_name: user.display_name,
         gender: user.gender,
+        avatar_url: user.avatar_url,
         couple_code: user.couple_code,
         room_id: user.room_id
       }

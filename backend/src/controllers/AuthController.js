@@ -3,8 +3,8 @@ import AuthService from '../services/AuthService.js';
 class AuthController {
   async register(req, res) {
     try {
-      const { email, password, displayName, gender } = req.body;
-      const data = await AuthService.sendOTPRequest(email, password, displayName, gender);
+      const { email, password, displayName, gender, avatarUrl } = req.body;
+      const data = await AuthService.sendOTPRequest(email, password, displayName, gender, avatarUrl);
       res.json(data);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -97,6 +97,16 @@ class AuthController {
     try {
       const data = await AuthService.getPartner(req.user);
       res.json({ partner: data });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  async updateProfile(req, res) {
+    try {
+      const { displayName, gender, avatarUrl } = req.body;
+      const data = await AuthService.updateProfile(req.user.id, displayName, gender, avatarUrl);
+      res.json(data);
     } catch (error) {
       res.status(400).json({ error: error.message });
     }

@@ -10,8 +10,13 @@ const HelloKittyNPC = ({ targetObject, onTargetReached }) => {
   // AFK Logic
   useEffect(() => {
     let afkTimer;
+    let lastMove = 0;
     
     const resetTimer = () => {
+      const now = Date.now();
+      if (now - lastMove < 1000) return; // Throttling: max 1 lần mỗi giây
+      lastMove = now;
+
       setIsSleeping(false);
       setMessage('');
       clearTimeout(afkTimer);

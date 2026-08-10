@@ -11,11 +11,9 @@ import { Toaster } from 'react-hot-toast';
 import './assets/css/index.css';
 import './assets/css/sparkle.css';
 
-function AppContent() {
-  const [isEntered, setIsEntered] = useState(false);
+function SparkleEffect() {
   const [sparkles, setSparkles] = useState([]);
 
-  // Handle global click sparkles
   useEffect(() => {
     const handleGlobalClick = (e) => {
       const newSparkle = {
@@ -29,6 +27,24 @@ function AppContent() {
     window.addEventListener('click', handleGlobalClick);
     return () => window.removeEventListener('click', handleGlobalClick);
   }, []);
+
+  return (
+    <>
+      {sparkles.map(sparkle => (
+        <div 
+          key={sparkle.id} 
+          className="sparkle"
+          style={{ left: sparkle.x - 10, top: sparkle.y - 10, pointerEvents: 'none', position: 'fixed', zIndex: 9999 }}
+        >
+          ✨
+        </div>
+      ))}
+    </>
+  );
+}
+
+function AppContent() {
+  const [isEntered, setIsEntered] = useState(false);
 
   return (
     <>
@@ -55,15 +71,7 @@ function AppContent() {
       />
       
       {/* Render Sparkles */}
-      {sparkles.map(sparkle => (
-        <div 
-          key={sparkle.id} 
-          className="sparkle"
-          style={{ left: sparkle.x - 10, top: sparkle.y - 10 }}
-        >
-          ✨
-        </div>
-      ))}
+      <SparkleEffect />
 
       <Routes>
         <Route path="/login" element={<Login />} />
