@@ -314,7 +314,7 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
         {/* RINGING UI */}
         {callState === 'ringing' && (
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255, 255, 255, 0.9)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <h2 style={{ color: '#ff6b81', animation: 'pulse 1.5s infinite' }}>{partner?.display_name} đang gọi {incomingCall?.isVideo ? 'Video' : 'Thoại'}...</h2>
+            <h3 style={{ color: '#ff6b81', animation: 'pulse 1.5s infinite', textAlign: 'center', padding: '0 10px', wordBreak: 'break-word', margin: '0 0 20px 0' }}>{partner?.display_name} đang gọi {incomingCall?.isVideo ? 'Video' : 'Thoại'}...</h3>
             <div style={{ display: 'flex', gap: '20px', marginTop: '20px' }}>
               <button onClick={acceptCall} style={{ background: '#4cd137', color: 'white', padding: '10px 20px', borderRadius: '20px', border: 'none', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer' }}>Nghe</button>
               <button onClick={rejectCall} style={{ background: '#ff4757', color: 'white', padding: '10px 20px', borderRadius: '20px', border: 'none', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer' }}>Từ chối</button>
@@ -342,8 +342,8 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
               {callState === 'calling' && <p style={{ position: 'absolute', top: '50%', left: '0', right: '0', textAlign: 'center', color: 'white', background: 'rgba(0,0,0,0.5)', padding: '10px' }}>Đang gọi...</p>}
             </div>
             <div style={{ padding: '15px', display: 'flex', justifyContent: 'center', background: '#2f3640' }}>
-              <button onClick={handleEndCall} style={{ background: '#ff4757', color: 'white', border: 'none', borderRadius: '50%', width: '50px', height: '50px', cursor: 'pointer', fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="material-icons">call_end</span>
+              <button onClick={handleEndCall} style={{ background: '#ff4757', color: 'white', border: 'none', borderRadius: '50%', width: '50px', height: '50px', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(255, 71, 87, 0.4)' }}>
+                <span>❌</span>
               </button>
             </div>
           </div>
@@ -394,16 +394,16 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
           style={{ 
             background: isRecording ? '#ff4757' : 'white', 
             color: isRecording ? 'white' : '#ff6b81', 
-            border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+            border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'
           }}
         >
-          <span className="material-icons">{isRecording ? 'stop' : 'mic'}</span>
+          <span>{isRecording ? '⏹️' : '🎤'}</span>
         </button>
         <button 
           onClick={handleSendText}
-          style={{ background: '#ff6b81', color: 'white', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ background: '#ff6b81', color: 'white', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}
         >
-          <span className="material-icons">send</span>
+          <span>🚀</span>
         </button>
       </div>
       

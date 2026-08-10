@@ -59,8 +59,23 @@ const MainRoom = () => {
   const [isUploadingProfilePic, setIsUploadingProfilePic] = useState(false);
   const [onlineUserIds, setOnlineUserIds] = useState([]);
   const [isMessengerMinimized, setIsMessengerMinimized] = useState(false);
+  const initialLoadRef = useRef(true);
   
   const isPartnerOnline = partner && onlineUserIds.includes(partner.id);
+
+  useEffect(() => {
+    if (initialLoadRef.current) {
+      if (partner) initialLoadRef.current = false;
+      return;
+    }
+    if (partner) {
+      if (isPartnerOnline) {
+        toast(`${partner.display_name} vừa vào nhà! 🟢`, { icon: '👋' });
+      } else {
+        toast(`${partner.display_name} đã rời đi! ⚪`, { icon: '🏃' });
+      }
+    }
+  }, [isPartnerOnline, partner]);
 
   useEffect(() => {
     if (!user || !user.room_id) {
