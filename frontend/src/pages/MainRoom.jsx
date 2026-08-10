@@ -138,6 +138,12 @@ const MainRoom = () => {
       }
     };
 
+    const handleChatMessage = (msg) => {
+      if (msg.sender_id !== user?.id) {
+        toast('Nửa kia vừa nhắn tin cho bạn! 💬', { icon: '📱', duration: 4000 });
+      }
+    };
+
     const handleMusicAction = (data) => {
       if (data.action === 'play') {
         setCurrentTrack(data.track);
@@ -158,6 +164,7 @@ const MainRoom = () => {
     socket.on('music_action', handleMusicAction);
     socket.on('watch_movie', handleWatchMovie);
     socket.on('sync_tv_state', handleSyncTvState);
+    socket.on('chat_message', handleChatMessage);
     socket.on('room_online_users', handleRoomOnlineUsers);
     socket.on('user_online', handleUserOnline);
     socket.on('user_offline', handleUserOffline);
@@ -167,6 +174,7 @@ const MainRoom = () => {
       socket.off('music_action', handleMusicAction);
       socket.off('watch_movie', handleWatchMovie);
       socket.off('sync_tv_state', handleSyncTvState);
+      socket.off('chat_message', handleChatMessage);
       socket.off('new_pair_request');
       socket.off('pair_accepted');
       socket.off('room_online_users', handleRoomOnlineUsers);

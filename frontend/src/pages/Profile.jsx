@@ -7,6 +7,7 @@ import { uploadFile } from '../api/uploadApi';
 import { API_URL } from '../api/apiClient';
 import { socket } from '../utils/socket';
 import { toast } from 'react-hot-toast';
+import GuideModal from '../components/common/GuideModal';
 
 const Profile = () => {
   const { user, logout, setUser } = useContext(AuthContext);
@@ -19,6 +20,9 @@ const Profile = () => {
   const [editGender, setEditGender] = useState(user?.gender || 'Nữ');
   const [editAvatar, setEditAvatar] = useState(user?.avatar_url || '');
   const [isUploading, setIsUploading] = useState(false);
+  
+  // State cho Modal Hướng Dẫn
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   
   const navigate = useNavigate();
 
@@ -221,10 +225,18 @@ const Profile = () => {
           </div>
         )}
 
-        <button onClick={handleLogout} style={{ marginTop: '20px', background: 'transparent', color: '#999', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-          Đăng xuất
-        </button>
+        <div style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+          <button 
+            onClick={() => setIsGuideOpen(true)}
+            style={{ padding: '8px 20px', background: '#ffe4e1', border: '1px solid #ffb6c1', color: '#ff6b81', borderRadius: '15px', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            📖 Hướng Dẫn Sử Dụng
+          </button>
+          <a href="#" onClick={handleLogout} style={{ color: '#aaa', textDecoration: 'underline', fontSize: '0.9rem' }}>Đăng xuất</a>
+        </div>
       </div>
+      
+      <GuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
     </div>
   );
 };
