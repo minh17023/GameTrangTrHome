@@ -107,8 +107,16 @@ io.on('connection', (socket) => {
     console.log('User disconnected:', socket.id);
     const userData = onlineUsers.get(socket.id);
     if (userData) {
-      socket.to(userData.roomId).emit('user_offline', userData.userId);
       onlineUsers.delete(socket.id);
+      
+      // Kiểm tra xem user này còn tab/socket nào khác đang mở không
+      const hasOtherSockets = Array.from(onlineUsers.values()).some(
+        u => u.roomId === userData.roomId && u.userId === userData.userId
+      );
+      
+      if (!hasOtherSockets) {
+        socket.to(userData.roomId).emit('user_offline', userData.userId);
+      }
     }
   });
 });

@@ -160,7 +160,7 @@ const MainRoom = () => {
       socket.off('user_offline', handleUserOffline);
       socket.disconnect();
     };
-  }, [user]);
+  }, [user?.id, user?.room_id]);
 
   const fetchAllData = async () => {
     try {
