@@ -74,6 +74,15 @@ class AuthRepository {
     return data;
   }
 
+  async deleteUserByEmail(email) {
+    const { data, error } = await supabase
+      .from('users')
+      .delete()
+      .eq('email', email);
+    if (error) throw error;
+    return data;
+  }
+
   async createPairRequest(requesterId, targetId) {
     const { data, error } = await supabase
       .from('pair_requests')

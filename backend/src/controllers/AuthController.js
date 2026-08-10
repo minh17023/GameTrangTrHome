@@ -4,7 +4,7 @@ class AuthController {
   async register(req, res) {
     try {
       const { email, password, displayName } = req.body;
-      const data = await AuthService.register(email, password, displayName);
+      const data = await AuthService.sendOTPRequest(email, password, displayName);
       res.json(data);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -14,7 +14,7 @@ class AuthController {
   async verifyOTP(req, res) {
     try {
       const { email, code } = req.body;
-      const data = await AuthService.verifyOTP(email, code);
+      const data = await AuthService.verifyOTPAndRegister(email, code);
       res.json(data);
     } catch (error) {
       res.status(400).json({ error: error.message });

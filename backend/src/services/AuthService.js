@@ -6,57 +6,70 @@ import MailService from './MailService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hello-kitty-super-secret-key-123';
 
+// In-memory store for OTP requests (Email -> { code, expires, password, displayName })
+const otpStore = new Map();
+
 class AuthService {
-  async register(email, password, displayName) {
+  async sendOTPRequest(email, password, displayName) {
     if (!email || !password || !displayName) {
       throw new Error('Vui lòng điền đủ thông tin');
     }
 
     const existingUser = await AuthRepository.getUserByEmail(email);
-    if (existingUser) {
+    if (existingUser && existingUser.is_verified !== false) {
       throw new Error('Email này đã được sử dụng');
     }
 
-    const password_hash = await bcrypt.hash(password, 10);
-    // Generate a cute random couple code
-    const couple_code = crypto.randomBytes(3).toString('hex').toUpperCase();
-
     // Generate OTP
     const otp_code = Math.floor(100000 + Math.random() * 900000).toString();
-    const otp_expires = new Date(Date.now() + 5 * 60000).toISOString(); // 5 mins
+    const otp_expires = new Date(Date.now() + 5 * 60000); // 5 mins
 
-    const newUser = await AuthRepository.createUser({
-      email,
-      password_hash,
-      display_name: displayName,
-      couple_code,
-      is_verified: false,
-      otp_code,
-      otp_expires
+    otpStore.set(email, {
+      code: otp_code,
+      expires: otp_expires,
+      password,
+      displayName
     });
 
     // Send OTP email
     await MailService.sendOTP(email, otp_code);
 
-    return { message: 'Vui lòng kiểm tra email để lấy mã xác nhận', email: newUser.email };
+    return { message: 'Vui lòng kiểm tra email để lấy mã xác nhận' };
   }
 
-  async verifyOTP(email, code) {
+  async verifyOTPAndRegister(email, code) {
     if (!email || !code) throw new Error('Vui lòng nhập đủ thông tin');
-    const user = await AuthRepository.getUserByEmail(email);
     
-    if (!user) throw new Error('Người dùng không tồn tại');
-    if (user.is_verified) throw new Error('Tài khoản đã được xác thực');
-    if (user.otp_code !== code) throw new Error('Mã xác nhận không đúng');
-    if (new Date() > new Date(user.otp_expires)) throw new Error('Mã xác nhận đã hết hạn');
+    const otpData = otpStore.get(email);
+    if (!otpData) throw new Error('Không tìm thấy yêu cầu đăng ký cho email này');
+    if (otpData.code !== code) throw new Error('Mã xác nhận không đúng');
+    if (new Date() > otpData.expires) {
+      otpStore.delete(email);
+      throw new Error('Mã xác nhận đã hết hạn. Vui lòng gửi lại');
+    }
 
-    const updatedUser = await AuthRepository.updateUser(user.id, {
-      is_verified: true,
-      otp_code: null,
-      otp_expires: null
+    // If verified, proceed to save in DB
+    const password_hash = await bcrypt.hash(otpData.password, 10);
+    const couple_code = crypto.randomBytes(3).toString('hex').toUpperCase();
+
+    // If there is an existing unverified user, we can just update it, or better yet, since we use email as unique, we should upsert or delete the old one.
+    // AuthRepository.createUser will fail if email already exists. We should delete existing unverified first.
+    const existingUser = await AuthRepository.getUserByEmail(email);
+    if (existingUser && !existingUser.is_verified) {
+      await AuthRepository.deleteUserByEmail(email);
+    }
+
+    const newUser = await AuthRepository.createUser({
+      email,
+      password_hash,
+      display_name: otpData.displayName,
+      couple_code,
+      is_verified: true
     });
 
-    return this.generateAuthResponse(updatedUser);
+    otpStore.delete(email);
+
+    return this.generateAuthResponse(newUser);
   }
 
   async login(email, password) {
@@ -70,12 +83,7 @@ class AuthService {
     }
 
     if (user.is_verified === false) {
-      // Tự động tạo mã mới nếu đăng nhập mà chưa xác thực
-      const otp_code = Math.floor(100000 + Math.random() * 900000).toString();
-      const otp_expires = new Date(Date.now() + 5 * 60000).toISOString();
-      await AuthRepository.updateUser(user.id, { otp_code, otp_expires });
-      await MailService.sendOTP(user.email, otp_code);
-      throw new Error('NOT_VERIFIED');
+      throw new Error('Tài khoản chưa được xác thực. Vui lòng đăng ký lại để xác thực.');
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
