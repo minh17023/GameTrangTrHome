@@ -435,7 +435,7 @@ const MainRoom = () => {
           id="Thú Cưng"
           icon={petIcon} 
           label={pet ? pet.name : 'Thú Cưng'} 
-          initialX={450} initialY={600} 
+          initialX={600} initialY={400} 
           dbPosition={itemPositions["Thú Cưng"]} 
           onClick={() => { setActiveModal("Thú Cưng"); handlePetAction(); }} 
           onDragStart={handlePetAction}

@@ -18,8 +18,8 @@ const DraggableItem = ({ id, icon, label, initialX, initialY, dbPosition, onClic
     return (val / (isX ? 1200 : 800)) * max;
   };
 
-  let startX = initialX;
-  let startY = initialY;
+  let startX = parseCoord(initialX, window.innerWidth, true);
+  let startY = parseCoord(initialY, window.innerHeight, false);
   
   if (dbPosition) {
     startX = parseCoord(dbPosition.x, window.innerWidth, true);
