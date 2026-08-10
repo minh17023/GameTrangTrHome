@@ -9,6 +9,7 @@ import uploadRoutes from './uploadRoutes.js';
 import itemRoutes from './itemRoutes.js';
 import authRoutes from './authRoutes.js';
 import photoRoutes from './photoRoutes.js';
+import petRoutes from './pet_routes.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -23,6 +24,7 @@ router.use('/music', authMiddleware, musicRoutes);
 router.use('/letters', authMiddleware, letterRoutes);
 router.use('/messages', authMiddleware, messageRoutes);
 router.use('/items', authMiddleware, itemRoutes);
+router.use('/pets', authMiddleware, petRoutes);
 
 // Upload API có thể bảo vệ hoặc public
 router.use('/upload', uploadRoutes);

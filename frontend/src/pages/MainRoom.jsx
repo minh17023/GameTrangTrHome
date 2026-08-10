@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import DraggableItem from '../components/common/DraggableItem';
-import HelloKittyNPC from '../components/room/HelloKittyNPC';
 import Messenger from '../components/room/Messenger';
 import StarrySpace from '../components/room/StarrySpace';
 import { socket } from '../utils/socket';
@@ -17,6 +16,7 @@ import { getMusic, deleteMusic } from '../api/musicApi';
 import { getAllItems } from '../api/itemApi';
 import { getPartner } from '../api/authApi';
 import { getPhotos } from '../api/photoApi';
+import { getPet } from '../api/petApi';
 
 // Features (Modals)
 import ProfileModal from '../components/room/features/ProfileModal';
@@ -26,6 +26,7 @@ import MovieModal from '../components/room/features/MovieModal';
 import MusicPlayerModal from '../components/room/features/MusicPlayerModal';
 import PhotoAlbumModal from '../components/room/features/PhotoAlbumModal';
 import TVModal from '../components/room/features/TVModal';
+import PetModal from '../components/room/features/PetModal';
 
 const MainRoom = () => {
   const { user, logout, setUser } = useContext(AuthContext);
@@ -34,7 +35,6 @@ const MainRoom = () => {
   const [currentFloor, setCurrentFloor] = useState('living');
   const [activeModal, setActiveModal] = useState(null);
   
-  const [npcTarget, setNpcTarget] = useState(null);
   const [itemPositions, setItemPositions] = useState({});
 
   // Shared Data States
@@ -44,6 +44,9 @@ const MainRoom = () => {
   const [musicList, setMusicList] = useState([]);
   const [photos, setPhotos] = useState([]);
   const [partner, setPartner] = useState(null);
+  const [pet, setPet] = useState(null);
+  const [petSpeech, setPetSpeech] = useState("");
+  const [petFloor, setPetFloor] = useState('living');
 
   // Specific States
   const [isStarrySpaceOpen, setIsStarrySpaceOpen] = useState(false);
@@ -122,6 +125,19 @@ const MainRoom = () => {
           toast('Bạn có thư mới từ người ấy! 💌', { icon: '🧑‍🤝‍🧑', duration: 5000 });
         }
       }
+      if (data.type === 'pet_floor_changed') {
+        setPetFloor(data.floor);
+      }
+      if (data.type === 'pet_interact') {
+        let text = "";
+        if (data.action === 'feed') text = "Măm măm... ngon quá! 🍖";
+        if (data.action === 'play') text = "Meo meo... vui quá! 🧶";
+        if (data.action === 'pet') text = "Meo~ Thích quá đi! 🥰";
+        
+        setPetSpeech(text);
+        if (window.petSpeechTimer) clearTimeout(window.petSpeechTimer);
+        window.petSpeechTimer = setTimeout(() => setPetSpeech(""), 3000);
+      }
     };
 
     const handleWatchMovie = (data) => {
@@ -142,6 +158,30 @@ const MainRoom = () => {
       if (msg.sender_id !== user?.id) {
         toast('Nửa kia vừa nhắn tin cho bạn! 💬', { icon: '📱', duration: 4000 });
       }
+    };
+
+    const handlePetFloorChanged = (data) => {
+      setPetFloor(data.floor);
+    };
+
+    const handleItemMoved = (data) => {
+      setItemPositions(prev => ({
+        ...prev,
+        [data.label]: { x: data.x, y: data.y }
+      }));
+    };
+
+    const handlePetUpdated = (updatedPet) => {
+      setPet(updatedPet);
+    };
+
+    const handlePetInteracted = (data) => {
+      setPet(data.pet);
+      let actionName = 'vừa tương tác với bé';
+      if (data.action === 'feed') actionName = 'vừa cho bé ăn 🍖';
+      if (data.action === 'play') actionName = 'vừa chơi đùa với bé 🧶';
+      if (data.action === 'pet') actionName = 'vừa vuốt ve bé 🥰';
+      toast(`Nửa kia ${actionName}!`, { icon: '🐾' });
     };
 
     const handleMusicAction = (data) => {
@@ -165,6 +205,10 @@ const MainRoom = () => {
     socket.on('watch_movie', handleWatchMovie);
     socket.on('sync_tv_state', handleSyncTvState);
     socket.on('chat_message', handleChatMessage);
+    socket.on('pet_updated', handlePetUpdated);
+    socket.on('pet_interacted', handlePetInteracted);
+    socket.on('item_dragging', handleItemMoved);
+    socket.on('item_moved', handleItemMoved);
     socket.on('room_online_users', handleRoomOnlineUsers);
     socket.on('user_online', handleUserOnline);
     socket.on('user_offline', handleUserOffline);
@@ -175,6 +219,10 @@ const MainRoom = () => {
       socket.off('watch_movie', handleWatchMovie);
       socket.off('sync_tv_state', handleSyncTvState);
       socket.off('chat_message', handleChatMessage);
+      socket.off('pet_updated', handlePetUpdated);
+      socket.off('pet_interacted', handlePetInteracted);
+      socket.off('item_dragging', handleItemMoved);
+      socket.off('item_moved', handleItemMoved);
       socket.off('new_pair_request');
       socket.off('pair_accepted');
       socket.off('room_online_users', handleRoomOnlineUsers);
@@ -186,14 +234,15 @@ const MainRoom = () => {
 
   const fetchAllData = async () => {
     try {
-      const [fetchedLetters, fridge, movieList, music, itemsData, partnerData, fetchedPhotos] = await Promise.all([
+      const [fetchedLetters, fridge, movieList, music, itemsData, partnerData, fetchedPhotos, fetchedPet] = await Promise.all([
         getLetters().catch(() => []),
         getFridgeItems().catch(() => []),
         getMovies().catch(() => []),
         getMusic().catch(() => []),
         getAllItems().catch(() => []),
         getPartner().catch(() => null),
-        getPhotos().catch(() => [])
+        getPhotos().catch(() => []),
+        getPet().catch(() => null)
       ]);
 
       if (fetchedLetters) setLetters(fetchedLetters);
@@ -217,6 +266,7 @@ const MainRoom = () => {
         }
       }
       if (partnerData) setPartner(partnerData);
+      if (fetchedPet) setPet(fetchedPet);
       
       if (itemsData && Array.isArray(itemsData)) {
         const positions = {};
@@ -271,6 +321,53 @@ const MainRoom = () => {
     return "none";
   };
 
+  const handlePetAction = () => {
+    if (!pet) return;
+    
+    // Play sound
+    const audioUrl = pet.type === 'cat' 
+      ? 'https://actions.google.com/sounds/v1/animals/cat_meow_2.ogg' 
+      : 'https://actions.google.com/sounds/v1/animals/dog_barking.ogg';
+    const audio = new Audio(audioUrl);
+    audio.play().catch(e => console.log("Audio play prevented", e));
+    
+    // Show speech bubble
+    const messages = pet.type === 'cat' 
+      ? ["Meow~", "Purrr...", "Meo meo!", "Niao~"] 
+      : ["Gâu gâu!", "Woof~", "Ư ử...", "Gâu!"];
+    const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+    setPetSpeech(randomMsg);
+    
+    setTimeout(() => {
+      setPetSpeech("");
+    }, 3000);
+  };
+
+  const petIcon = (
+    <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+      {petSpeech && (
+        <div style={{
+          position: 'absolute', top: '-40px', left: '50%', transform: 'translateX(-50%)',
+          background: 'white', border: '2px solid #ffb6c1', borderRadius: '15px', padding: '5px 10px',
+          fontSize: '0.9rem', fontWeight: 'bold', color: '#ff6b81', whiteSpace: 'nowrap',
+          boxShadow: '0 2px 5px rgba(0,0,0,0.1)', zIndex: 20
+        }}>
+          {petSpeech}
+          <div style={{ position: 'absolute', bottom: '-6px', left: '50%', transform: 'translateX(-50%) rotate(45deg)', width: '10px', height: '10px', background: 'white', borderBottom: '2px solid #ffb6c1', borderRight: '2px solid #ffb6c1' }}></div>
+        </div>
+      )}
+      <span style={{ fontSize: '4rem', pointerEvents: 'none' }}>
+        {pet ? (pet.type === 'cat' ? '🐱' : '🐶') : '🐾'}
+      </span>
+    </div>
+  );
+
+  const handleFloorChange = (floor) => {
+    setCurrentFloor(floor);
+    setPetFloor(floor);
+    socket.emit('data_changed', { type: 'pet_floor_changed', floor, roomId: user.room_id });
+  };
+
   return (
     <div className="static-house-wrapper" style={{ backgroundImage: getBackgroundImage() }}>
       
@@ -298,7 +395,7 @@ const MainRoom = () => {
         ></audio>
       )}
 
-      <HelloKittyNPC targetObject={npcTarget} onTargetReached={() => setNpcTarget(null)} />
+
       
       {/* Living Room Items */}
       {currentFloor === 'living' && (
@@ -306,7 +403,6 @@ const MainRoom = () => {
           <DraggableItem icon="📺" label="Tivi" initialX={200} initialY={400} dbPosition={itemPositions["Tivi"]} onClick={() => { setActiveModal("Tivi"); socket.emit('sync_tv_state', { roomId: user.room_id, action: 'open' }); }} roomId={user.room_id} />
           <DraggableItem icon="🧊" label="Tủ Lạnh" initialX={800} initialY={200} dbPosition={itemPositions["Tủ Lạnh"]} onClick={() => setActiveModal("Tủ Lạnh")} roomId={user.room_id} />
           <DraggableItem icon="📱" label="Điện Thoại" initialX={700} initialY={500} dbPosition={itemPositions["Điện Thoại"]} onClick={() => setActiveModal("Điện Thoại")} roomId={user.room_id} />
-          <DraggableItem icon="🐱" label="Bé Mèo" initialX={450} initialY={600} dbPosition={itemPositions["Bé Mèo"]} onClick={() => alert("Meow~")} roomId={user.room_id} />
         </>
       )}
 
@@ -328,10 +424,24 @@ const MainRoom = () => {
 
       {/* Floor Selector */}
       <div className="floor-selector">
-        <button className={`floor-btn ${currentFloor === 'living' ? 'active' : ''}`} onClick={() => setCurrentFloor('living')}>Tầng Khách 🛋️</button>
-        <button className={`floor-btn ${currentFloor === 'bedroom' ? 'active' : ''}`} onClick={() => setCurrentFloor('bedroom')}>Tầng Ngủ 🛏️</button>
-        <button className={`floor-btn ${currentFloor === 'rooftop' ? 'active' : ''}`} onClick={() => setCurrentFloor('rooftop')}>Tầng Thượng 🌌</button>
+        <button className={`floor-btn ${currentFloor === 'living' ? 'active' : ''}`} onClick={() => handleFloorChange('living')}>Tầng Khách 🛋️</button>
+        <button className={`floor-btn ${currentFloor === 'bedroom' ? 'active' : ''}`} onClick={() => handleFloorChange('bedroom')}>Tầng Ngủ 🛏️</button>
+        <button className={`floor-btn ${currentFloor === 'rooftop' ? 'active' : ''}`} onClick={() => handleFloorChange('rooftop')}>Tầng Thượng 🌌</button>
       </div>
+
+      {/* Global Items (Render only if pet is on this floor) */}
+      {currentFloor === petFloor && (
+        <DraggableItem 
+          id="Thú Cưng"
+          icon={petIcon} 
+          label={pet ? pet.name : 'Thú Cưng'} 
+          initialX={450} initialY={600} 
+          dbPosition={itemPositions["Thú Cưng"]} 
+          onClick={() => { setActiveModal("Thú Cưng"); handlePetAction(); }} 
+          onDragStart={handlePetAction}
+          roomId={user.room_id} 
+        />
+      )}
 
       {/* Extracted Modals */}
       <ProfileModal 
@@ -401,6 +511,15 @@ const MainRoom = () => {
         onClose={() => setActiveModal(null)} 
         user={user} 
         socket={socket} 
+      />
+
+      <PetModal 
+        isOpen={activeModal === "Thú Cưng"} 
+        onClose={() => setActiveModal(null)} 
+        user={user} 
+        socket={socket} 
+        pet={pet}
+        setPet={setPet}
       />
 
       {/* Điện Thoại / Messenger (Not a standard modal) */}

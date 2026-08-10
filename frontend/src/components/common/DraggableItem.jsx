@@ -4,8 +4,9 @@ import { updateItemPosition } from '../../api/itemApi';
 import { socket } from '../../utils/socket';
 import '../../assets/css/index.css';
 
-const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick, roomId }) => {
-  const storageKey = `pos_${label}`;
+const DraggableItem = ({ id, icon, label, initialX, initialY, dbPosition, onClick, onDragStart, roomId, blendMode }) => {
+  const itemKey = id || label;
+  const storageKey = `pos_${itemKey}`;
   const isDragging = React.useRef(false);
   
   // Convert absolute pixels to percentage if it's old data
@@ -56,7 +57,7 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick, r
 
   useEffect(() => {
     const handleItemMoved = (data) => {
-      if (data.label === label) {
+      if (data.label === itemKey) {
         x.set(parseCoord(data.x, window.innerWidth, true));
         y.set(parseCoord(data.y, window.innerHeight, false));
       }
@@ -78,11 +79,12 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick, r
   const handleDrag = (event, info) => {
     const pctX = x.get() / window.innerWidth;
     const pctY = y.get() / window.innerHeight;
-    socket.emit('item_dragging', { label, x: pctX, y: pctY, roomId });
+    socket.emit('item_dragging', { label: itemKey, x: pctX, y: pctY, roomId });
   };
 
-  const handleDragStart = () => {
+  const handleDragStart = (e, info) => {
     isDragging.current = true;
+    if (onDragStart) onDragStart(e, info);
   };
 
   const handleDragEnd = async () => {
@@ -94,11 +96,11 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick, r
     const pctY = y.get() / window.innerHeight;
     
     localStorage.setItem(storageKey, JSON.stringify({ x: pctX, y: pctY }));
-    socket.emit('item_dragging', { label, x: pctX, y: pctY, roomId });
+    socket.emit('item_dragging', { label: itemKey, x: pctX, y: pctY, roomId });
 
     
     try {
-      await updateItemPosition(label, pctX, pctY);
+      await updateItemPosition(itemKey, pctX, pctY);
     } catch (e) {
       console.log("Không thể lưu vị trí lên Server", e);
     }
@@ -108,7 +110,7 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick, r
     <motion.div
       drag
       dragMomentum={false}
-      style={{ x, y, position: 'absolute', cursor: 'grab', zIndex: 10 }}
+      style={{ x, y, position: 'absolute', cursor: 'grab', zIndex: 10, mixBlendMode: blendMode || 'normal' }}
       whileTap={{ cursor: 'grabbing', scale: 0.9 }}
       whileHover={{ scale: 1.1, filter: 'drop-shadow(0px 0px 10px rgba(255,255,255,0.8))' }}
       onClick={(e) => {
@@ -119,6 +121,7 @@ const DraggableItem = ({ icon, label, initialX, initialY, dbPosition, onClick, r
         if (onClick) onClick(e);
       }}
       onDragStart={handleDragStart}
+      onDrag={handleDrag}
       onDragEnd={handleDragEnd}
       className="draggable-item-2d"
     >
