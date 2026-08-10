@@ -83,6 +83,21 @@ io.on('connection', (socket) => {
     if (roomId) socket.to(roomId).emit('music_action', data);
   });
 
+  socket.on('watch_movie', (data) => {
+    const { roomId } = data;
+    if (roomId) socket.to(roomId).emit('watch_movie', data);
+  });
+
+  socket.on('sync_tv_state', (data) => {
+    const { roomId } = data;
+    if (roomId) socket.to(roomId).emit('sync_tv_state', data);
+  });
+
+  socket.on('sync_video', (data) => {
+    const { roomId } = data;
+    if (roomId) socket.to(roomId).emit('sync_video', data);
+  });
+
   // WebRTC Signaling
   socket.on('call_user', (data) => {
     const { roomId, callerId, offer, isVideo } = data;
