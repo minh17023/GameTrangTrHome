@@ -11,6 +11,7 @@ router.post('/reset-password', AuthController.resetPassword);
 router.post('/login', AuthController.login);
 router.get('/me', authMiddleware, AuthController.getMe);
 router.put('/me', authMiddleware, AuthController.updateProfile);
+router.post('/unpair', authMiddleware, AuthController.unpair);
 router.post('/pair', authMiddleware, AuthController.pairCouple);
 router.get('/pair-requests', authMiddleware, AuthController.getPairRequests);
 router.post('/accept-pair', authMiddleware, AuthController.acceptPairRequest);

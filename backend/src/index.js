@@ -32,13 +32,32 @@ const io = new Server(server, {
 
 app.set('io', io);
 
+const onlineUsers = new Map(); // socket.id -> { userId, roomId }
+
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
-  socket.on('join_room', (roomId) => {
+  socket.on('join_room', (data) => {
+    // data có thể là roomId string (cũ) hoặc object { roomId, userId }
+    const roomId = typeof data === 'string' ? data : data.roomId;
+    const userId = typeof data === 'string' ? null : data.userId;
+    
     if (roomId) {
       socket.join(roomId);
       console.log(`User ${socket.id} joined room ${roomId}`);
+      
+      if (userId) {
+        onlineUsers.set(socket.id, { userId, roomId });
+        // Phát sự kiện cho người khác trong phòng biết mình đang online
+        socket.to(roomId).emit('user_online', userId);
+        
+        // Trả về danh sách những người đang online trong phòng này (ngoại trừ mình)
+        const roomUsers = Array.from(onlineUsers.values())
+          .filter(u => u.roomId === roomId && u.userId !== userId)
+          .map(u => u.userId);
+        
+        socket.emit('room_online_users', roomUsers);
+      }
     }
   });
 
@@ -64,8 +83,33 @@ io.on('connection', (socket) => {
     if (roomId) socket.to(roomId).emit('music_action', data);
   });
 
+  // WebRTC Signaling
+  socket.on('call_user', (data) => {
+    const { roomId, callerId, offer, isVideo } = data;
+    if (roomId) socket.to(roomId).emit('call_incoming', { callerId, offer, isVideo });
+  });
+
+  socket.on('answer_call', (data) => {
+    const { roomId, answer } = data;
+    if (roomId) socket.to(roomId).emit('call_answered', { answer });
+  });
+
+  socket.on('ice_candidate', (data) => {
+    const { roomId, candidate } = data;
+    if (roomId) socket.to(roomId).emit('ice_candidate', { candidate });
+  });
+
+  socket.on('end_call', (roomId) => {
+    if (roomId) socket.to(roomId).emit('call_ended');
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+    const userData = onlineUsers.get(socket.id);
+    if (userData) {
+      socket.to(userData.roomId).emit('user_offline', userData.userId);
+      onlineUsers.delete(socket.id);
+    }
   });
 });
 

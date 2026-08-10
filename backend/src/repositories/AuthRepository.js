@@ -93,6 +93,18 @@ class AuthRepository {
     return data;
   }
 
+  async checkExistingPairRequest(requesterId, targetId) {
+    const { data, error } = await supabase
+      .from('pair_requests')
+      .select('id')
+      .eq('requester_id', requesterId)
+      .eq('target_id', targetId)
+      .eq('status', 'pending')
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+
   async createPairRequest(requesterId, targetId) {
     const { data, error } = await supabase
       .from('pair_requests')
@@ -132,6 +144,22 @@ class AuthRepository {
       .single();
     if (error) throw error;
     return data;
+  }
+
+  async deleteRoomData(roomId) {
+    // 1. Set users room_id to null
+    await supabase.from('users').update({ room_id: null }).eq('room_id', roomId);
+
+    // 2. Delete room data
+    await supabase.from('fridge_items').delete().eq('room_id', roomId);
+    await supabase.from('items').delete().eq('room_id', roomId);
+    await supabase.from('letters').delete().eq('room_id', roomId);
+    await supabase.from('movies').delete().eq('room_id', roomId);
+    await supabase.from('music').delete().eq('room_id', roomId);
+    await supabase.from('phone_messages').delete().eq('room_id', roomId);
+
+    // 3. Delete room
+    await supabase.from('rooms').delete().eq('id', roomId);
   }
 }
 

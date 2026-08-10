@@ -12,6 +12,7 @@ import { getMusic, addMusic, updateMusic, deleteMusic } from '../api/musicApi';
 import { uploadFile } from '../api/uploadApi';
 import { getAllItems } from '../api/itemApi';
 import { getPartner, updateProfile } from '../api/authApi';
+import Messenger from '../components/room/Messenger';
 import { socket } from '../utils/socket';
 import { toast } from 'react-hot-toast';
 import '../assets/css/index.css';
@@ -54,8 +55,12 @@ const MainRoom = () => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState(user?.display_name || '');
   const [editGender, setEditGender] = useState(user?.gender || 'Nữ');
-  const [editAvatar, setEditAvatar] = useState(user?.avatar_url || '');
+  const [editAvatar, setEditAvatar] = useState(null);
   const [isUploadingProfilePic, setIsUploadingProfilePic] = useState(false);
+  const [onlineUserIds, setOnlineUserIds] = useState([]);
+  const [isMessengerMinimized, setIsMessengerMinimized] = useState(false);
+  
+  const isPartnerOnline = partner && onlineUserIds.includes(partner.id);
 
   useEffect(() => {
     if (!user || !user.room_id) {
@@ -66,9 +71,24 @@ const MainRoom = () => {
     fetchAllData();
     
     // Khởi động kết nối Socket.IO
-    socket.connect();
-    socket.emit('join_room', user.room_id);
+    if (user?.room_id) {
+      socket.emit('join_room', { roomId: user.room_id, userId: user.id });
+    }
+    if (user?.id) {
+      socket.emit('join_user_room', user.id);
+    }
     
+    // Online tracking
+    const handleRoomOnlineUsers = (users) => {
+      setOnlineUserIds(users);
+    };
+    const handleUserOnline = (userId) => {
+      setOnlineUserIds(prev => [...prev, userId]);
+    };
+    const handleUserOffline = (userId) => {
+      setOnlineUserIds(prev => prev.filter(id => id !== userId));
+    };
+
     const handleDataChanged = (data) => {
       if (data.type === 'fridge') {
         getFridgeItems().then(setFridgeItems);
@@ -110,11 +130,18 @@ const MainRoom = () => {
 
     socket.on('data_changed', handleDataChanged);
     socket.on('music_action', handleMusicAction);
+    socket.on('room_online_users', handleRoomOnlineUsers);
+    socket.on('user_online', handleUserOnline);
+    socket.on('user_offline', handleUserOffline);
     
     return () => {
       socket.off('data_changed', handleDataChanged);
       socket.off('music_action', handleMusicAction);
-      socket.disconnect();
+      socket.off('new_pair_request');
+      socket.off('pair_accepted');
+      socket.off('room_online_users', handleRoomOnlineUsers);
+      socket.off('user_online', handleUserOnline);
+      socket.off('user_offline', handleUserOffline);
     };
   }, [user]);
 
@@ -494,7 +521,12 @@ const MainRoom = () => {
               {!partner?.avatar_url && (partner?.display_name ? partner.display_name.charAt(0).toUpperCase() : '♥')}
             </div>
             <div style={{ flex: 1 }}>
-              <h4 style={{ margin: '0 0 5px 0', color: '#ff6b81' }}>💞 Nửa kia {partner?.gender ? `(${partner.gender})` : ''}</h4>
+              <h4 style={{ margin: '0 0 5px 0', color: '#ff6b81', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                💞 Nửa kia {partner?.gender ? `(${partner.gender})` : ''}
+                {partner && (
+                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: isPartnerOnline ? '#4cd137' : '#ccc', display: 'inline-block' }} title={isPartnerOnline ? "Đang online" : "Đang offline"}></span>
+                )}
+              </h4>
               {partner ? (
                 <>
                   <p style={{ margin: '2px 0', fontSize: '0.9rem' }}><strong>Tên:</strong> {partner.display_name}</p>
@@ -567,21 +599,42 @@ const MainRoom = () => {
         ))}
       </Modal>
 
-      <Modal isOpen={activeModal === "Điện Thoại"} onClose={() => setActiveModal(null)} title="📱 Lời nhắn thoại">
-        <button onClick={handleAddPhone} style={{ width: '100%', padding: '10px', marginBottom: '15px', background: 'var(--pastel-pink)', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>➕ Tải lên Lời Nhắn Mới</button>
-        {voiceMessages.map((msg, idx) => (
-          <div key={idx} style={{ padding: '15px', background: '#fff', borderRadius: '15px', marginBottom: '10px', border: '2px solid var(--pastel-pink)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <p style={{ margin: 0 }}>▶ {msg.title}</p>
-              <div>
-                <button className="action-btn" onClick={() => handleEditPhone(msg)}>✏️</button>
-                <button className="action-btn" onClick={() => handleDeletePhone(msg.id)}>🗑️</button>
-              </div>
-            </div>
-            <audio controls src={msg.audio_url} style={{ marginTop: '10px', width: '100%' }}></audio>
+      {activeModal === "Điện Thoại" && (
+        isMessengerMinimized ? (
+          <div 
+            onClick={() => setIsMessengerMinimized(false)}
+            style={{
+              position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000, 
+              width: '60px', height: '60px', borderRadius: '50%', 
+              background: '#ffb6c1',
+              backgroundImage: partner?.avatar_url ? `url(${partner.avatar_url})` : 'none', 
+              backgroundSize: 'cover', backgroundPosition: 'center',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '3px solid white'
+            }}
+            title="Mở Messenger"
+          >
+            {!partner?.avatar_url && <span style={{ color: 'white', fontWeight: 'bold' }}>{partner?.display_name?.charAt(0) || '♥'}</span>}
+            <span style={{ 
+              position: 'absolute', bottom: '2px', right: '2px', 
+              width: '14px', height: '14px', borderRadius: '50%', 
+              background: isPartnerOnline ? '#4cd137' : '#ccc',
+              border: '2px solid white'
+            }}></span>
           </div>
-        ))}
-      </Modal>
+        ) : (
+          <div style={{
+            position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000, 
+            width: '350px', height: '500px', background: 'white', 
+            borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+            display: 'flex', flexDirection: 'column'
+          }}>
+            <Messenger partner={partner} isOnline={isPartnerOnline} onClose={() => setActiveModal(null)} onMinimize={() => setIsMessengerMinimized(true)} />
+          </div>
+        )
+      )}
 
       <Modal isOpen={activeModal === "Máy Nghe Nhạc"} onClose={() => setActiveModal(null)} title="🎧 Máy Nghe Nhạc">
         <div className="vinyl-container" style={{ marginBottom: '20px' }}>

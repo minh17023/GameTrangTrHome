@@ -9,6 +9,14 @@ export const getPartner = async () => {
   return data.partner;
 };
 
+export const unpair = async () => {
+  const token = localStorage.getItem('token');
+  const { data } = await axios.post(`${API_URL}/auth/unpair`, {}, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return data;
+};
+
 export const verifyOTP = async (email, code) => {
   const { data } = await axios.post(`${API_URL}/auth/verify-otp`, { email, code });
   return data;

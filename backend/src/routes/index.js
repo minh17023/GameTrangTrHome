@@ -4,6 +4,7 @@ import movieRoutes from './movieRoutes.js';
 import phoneRoutes from './phoneRoutes.js';
 import musicRoutes from './musicRoutes.js';
 import letterRoutes from './letterRoutes.js';
+import messageRoutes from './messageRoutes.js';
 import uploadRoutes from './uploadRoutes.js';
 import itemRoutes from './itemRoutes.js';
 import authRoutes from './authRoutes.js';
@@ -19,6 +20,7 @@ router.use('/movies', authMiddleware, movieRoutes);
 router.use('/phone', authMiddleware, phoneRoutes);
 router.use('/music', authMiddleware, musicRoutes);
 router.use('/letters', authMiddleware, letterRoutes);
+router.use('/messages', authMiddleware, messageRoutes);
 router.use('/items', authMiddleware, itemRoutes);
 
 // Upload API có thể bảo vệ hoặc public

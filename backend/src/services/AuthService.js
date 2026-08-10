@@ -111,6 +111,11 @@ class AuthService {
       throw new Error('Không tìm thấy người dùng với mã này');
     }
 
+    const existingRequest = await AuthRepository.checkExistingPairRequest(currentUser.id, partner.id);
+    if (existingRequest) {
+      throw new Error('Bạn đã gửi lời mời cho người này rồi, vui lòng chờ xác nhận!');
+    }
+
     // Instead of joining directly, create a pair request
     await AuthRepository.createPairRequest(currentUser.id, partner.id);
 
@@ -166,6 +171,15 @@ class AuthService {
     
     const updatedUser = await AuthRepository.updateUser(userId, updateData);
     return this.generateAuthResponse(updatedUser);
+  }
+
+  async unpair(currentUser) {
+    if (!currentUser.room_id) throw new Error("Chưa ghép đôi, không thể hủy.");
+    
+    await AuthRepository.deleteRoomData(currentUser.room_id);
+    
+    const updatedUser = { ...currentUser, room_id: null };
+    return { ...this.generateAuthResponse(updatedUser), message: 'Đã hủy ghép đôi và xóa toàn bộ dữ liệu phòng.' };
   }
 
   generateAuthResponse(user) {
