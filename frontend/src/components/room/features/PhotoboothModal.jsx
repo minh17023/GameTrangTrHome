@@ -361,25 +361,25 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
   const requiredPhotos = isCoupleMode ? 8 : 4;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Photobooth Máy Ảnh" width="900px">
-      <div style={{ display: 'flex', flexDirection: 'column', height: '70vh', background: '#fff', borderRadius: '10px', overflow: 'hidden' }}>
+    <Modal isOpen={isOpen} onClose={onClose} title="Photobooth Máy Ảnh" width="1100px">
+      <div style={{ display: 'flex', flexDirection: 'column', height: '75vh', background: '#fff', borderRadius: '10px', overflow: 'hidden' }}>
         
         {step === 'capture' && (
           <div style={{ display: 'flex', flex: 1, width: '100%', height: '100%' }}>
-            {/* Vùng Camera (Chia dọc - trên/dưới nếu Couple Mode có remoteStream) */}
-            <div style={{ flex: 2, background: '#000', position: 'relative', display: 'flex', flexDirection: (isCoupleMode && remoteStream) ? 'column' : 'row', overflow: 'hidden' }}>
+            {/* Vùng Camera (Chia đôi trái/phải nếu Couple Mode có remoteStream) */}
+            <div style={{ flex: 2, background: '#000', position: 'relative', display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
               
-              <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%' }}>
-                <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+              <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleX(-1)' }} />
                 {(isCoupleMode && remoteStream) && (
-                  <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '15px', fontSize: '0.8rem' }}>Bạn</div>
+                  <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '15px', fontSize: '0.8rem', zIndex: 10 }}>Bạn</div>
                 )}
               </div>
 
               {(isCoupleMode && remoteStream) && (
-                <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', borderTop: '2px solid #ff69b4' }}>
-                  <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-                  <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '15px', fontSize: '0.8rem' }}>Người yêu</div>
+                <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', borderLeft: '2px solid #ff69b4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleX(-1)' }} />
+                  <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '15px', fontSize: '0.8rem', zIndex: 10 }}>Người yêu</div>
                 </div>
               )}
 
