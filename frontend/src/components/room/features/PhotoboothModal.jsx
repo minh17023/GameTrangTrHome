@@ -366,20 +366,20 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
         
         {step === 'capture' && (
           <div style={{ display: 'flex', flex: 1, width: '100%', height: '100%' }}>
-            {/* Vùng Camera (Chia đôi nếu Couple Mode có remoteStream) */}
-            <div style={{ flex: 2, background: '#000', position: 'relative', display: 'flex', overflow: 'hidden' }}>
+            {/* Vùng Camera (Chia dọc - trên/dưới nếu Couple Mode có remoteStream) */}
+            <div style={{ flex: 2, background: '#000', position: 'relative', display: 'flex', flexDirection: (isCoupleMode && remoteStream) ? 'column' : 'row', overflow: 'hidden' }}>
               
-              <div style={{ flex: 1, position: 'relative', height: '100%' }}>
+              <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%' }}>
                 <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
                 {(isCoupleMode && remoteStream) && (
-                  <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '15px', fontSize: '0.8rem' }}>Bạn</div>
+                  <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '15px', fontSize: '0.8rem' }}>Bạn</div>
                 )}
               </div>
 
               {(isCoupleMode && remoteStream) && (
-                <div style={{ flex: 1, position: 'relative', height: '100%', borderLeft: '2px solid #ff69b4' }}>
+                <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', borderTop: '2px solid #ff69b4' }}>
                   <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-                  <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '15px', fontSize: '0.8rem' }}>Người yêu</div>
+                  <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '15px', fontSize: '0.8rem' }}>Người yêu</div>
                 </div>
               )}
 
@@ -423,14 +423,14 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
                 </label>
               </div>
               
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '5px' }}>
+              <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', paddingRight: '5px', alignContent: 'start' }}>
                 {capturedPhotos.map((p, idx) => (
                   <div key={idx} style={{ width: '100%', aspectRatio: '4/3', background: '#ddd', borderRadius: '5px', overflow: 'hidden', position: 'relative' }}>
                     <img src={p} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={`Captured ${idx}`} />
                   </div>
                 ))}
                 {capturedPhotos.length === 0 && (
-                  <div style={{ textAlign: 'center', color: '#999', marginTop: '50px' }}>Nhấn nút chụp ở dưới để bắt đầu chuỗi 4 ảnh!</div>
+                  <div style={{ gridColumn: 'span 2', textAlign: 'center', color: '#999', marginTop: '50px' }}>Nhấn nút chụp ở dưới để bắt đầu chuỗi 4 ảnh!</div>
                 )}
               </div>
               
