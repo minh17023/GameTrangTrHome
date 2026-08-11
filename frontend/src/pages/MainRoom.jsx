@@ -369,15 +369,13 @@ const MainRoom = () => {
   };
 
   const handleDeleteMusic = async (id) => {
-    if (window.confirm("Xóa bài nhạc này?")) {
-      await deleteMusic(id);
-      setMusicList(musicList.filter(m => m.id !== id));
-      socket.emit('data_changed', { type: 'music', roomId: user.room_id });
-      if (currentTrack?.id === id) {
-        setCurrentTrack(null);
-        setIsPlaying(false);
-        socket.emit('music_action', { action: 'pause', roomId: user.room_id });
-      }
+    await deleteMusic(id);
+    setMusicList(musicList.filter(m => m.id !== id));
+    socket.emit('data_changed', { type: 'music', roomId: user.room_id });
+    if (currentTrack?.id === id) {
+      setCurrentTrack(null);
+      setIsPlaying(false);
+      socket.emit('music_action', { action: 'pause', roomId: user.room_id });
     }
   };
 
@@ -593,7 +591,8 @@ const MainRoom = () => {
         isOpen={activeModal === "Photobooth"} 
         onClose={() => setActiveModal(null)} 
         user={user} 
-        socket={socket} 
+        socket={socket}
+        setPhotos={setPhotos}
       />
 
       <PetModal 

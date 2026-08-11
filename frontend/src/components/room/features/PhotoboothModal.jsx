@@ -25,7 +25,7 @@ const ICE_SERVERS = {
   ],
 };
 
-const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
+const PhotoboothModal = ({ isOpen, onClose, user, socket, setPhotos }) => {
   const [step, setStep] = useState('capture');
   const [stream, setStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
@@ -420,7 +420,8 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
           const uploadRes = await uploadFile(file, 'ptb_'); // Send prefix
           
           if (uploadRes.url) {
-             await createPhoto(uploadRes.url);
+             const addedPhoto = await createPhoto(uploadRes.url);
+             if (setPhotos) setPhotos(prev => [addedPhoto, ...prev]);
              toast.success("Đã lưu vào Album thành công!", { id: toastId });
              socket.emit('data_changed', { type: 'photo', roomId: user?.room_id });
           } else {

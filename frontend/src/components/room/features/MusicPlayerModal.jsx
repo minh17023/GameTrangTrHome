@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Modal from '../../common/Modal';
+import ConfirmDialog from '../../common/ConfirmDialog';
 import { addMusic } from '../../../api/musicApi';
 import { uploadFile } from '../../../api/uploadApi';
 import { toast } from 'react-hot-toast';
@@ -16,6 +17,13 @@ const MusicPlayerModal = ({
   const [musicAudio, setMusicAudio] = useState(null);
   const [musicCover, setMusicCover] = useState(null);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [musicToDelete, setMusicToDelete] = useState(null);
+
+  const confirmDeleteMusic = async () => {
+    if (!musicToDelete) return;
+    await handleDeleteMusic(musicToDelete);
+    setMusicToDelete(null);
+  };
 
   const handleMusicSubmit = async (e) => {
     e.preventDefault();
@@ -75,7 +83,7 @@ const MusicPlayerModal = ({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '15px', padding: '10px 0', maxHeight: '300px', overflowY: 'auto' }}>
             {musicList.map((track) => (
               <div key={track.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                <button className="delete-badge" onClick={(e) => { e.stopPropagation(); handleDeleteMusic(track.id); }} style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', zIndex: 5, fontSize: '12px' }}>X</button>
+                <button className="delete-badge" onClick={(e) => { e.stopPropagation(); setMusicToDelete(track.id); }} style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', zIndex: 5, fontSize: '12px' }}>X</button>
                 <div 
                   className={`vinyl-record-mini ${currentTrack?.id === track.id && isPlaying ? 'spinning' : ''}`}
                   onClick={() => togglePlayMusic(track)}
@@ -124,6 +132,14 @@ const MusicPlayerModal = ({
           </div>
         </form>
       )}
+
+      <ConfirmDialog 
+        isOpen={!!musicToDelete}
+        title="Xác nhận xóa"
+        message="Bạn có chắc muốn xóa bài nhạc này không?"
+        onConfirm={confirmDeleteMusic}
+        onCancel={() => setMusicToDelete(null)}
+      />
     </Modal>
   );
 };

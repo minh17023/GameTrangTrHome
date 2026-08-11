@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Modal from '../../common/Modal';
-import { createPhoto, toggleFavoritePhoto } from '../../../api/photoApi';
+import ConfirmDialog from '../../common/ConfirmDialog';
+import { createPhoto, toggleFavoritePhoto, deletePhoto } from '../../../api/photoApi';
 import { uploadFile } from '../../../api/uploadApi';
 import { toast } from 'react-hot-toast';
 
@@ -8,6 +9,7 @@ const PhotoAlbumModal = ({ isOpen, onClose, photos, setPhotos, setIsStarrySpaceO
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [activeTab, setActiveTab] = useState('normal'); // 'normal' | 'ptb'
+  const [photoToDelete, setPhotoToDelete] = useState(null);
 
   const handleUploadPhoto = async (e) => {
     const file = e.target.files[0];
@@ -35,6 +37,20 @@ const PhotoAlbumModal = ({ isOpen, onClose, photos, setPhotos, setIsStarrySpaceO
     } catch (err) {}
   };
 
+  const handleDeletePhoto = async () => {
+    if (!photoToDelete) return;
+    try {
+      await deletePhoto(photoToDelete);
+      setPhotos(photos.filter(p => p.id !== photoToDelete));
+      setSelectedPhoto(null);
+      setPhotoToDelete(null);
+      socket.emit('data_changed', { type: 'photo', roomId: user?.room_id });
+      toast.success("Đã xóa ảnh!");
+    } catch (err) {
+      toast.error("Không thể xóa ảnh.");
+    }
+  };
+
   const handleClose = () => {
     onClose();
     setSelectedPhoto(null);
@@ -60,12 +76,20 @@ const PhotoAlbumModal = ({ isOpen, onClose, photos, setPhotos, setIsStarrySpaceO
             alt="Ảnh phóng to" 
             style={{ maxWidth: '100%', maxHeight: '60vh', borderRadius: '10px', boxShadow: '0 5px 15px rgba(0,0,0,0.2)' }}
           />
-          <button 
-            onClick={() => handleToggleFavoritePhoto(selectedPhoto.id)}
-            style={{ marginTop: '15px', padding: '10px 20px', background: 'var(--pastel-pink)', border: 'none', borderRadius: '20px', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
-          >
-            {selectedPhoto.is_favorite ? '❤️ Bỏ Thích' : '🤍 Yêu Thích'}
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={() => handleToggleFavoritePhoto(selectedPhoto.id)}
+              style={{ marginTop: '15px', padding: '10px 20px', background: 'var(--pastel-pink)', border: 'none', borderRadius: '20px', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
+            >
+              {selectedPhoto.is_favorite ? '❤️ Bỏ Thích' : '🤍 Yêu Thích'}
+            </button>
+            <button 
+              onClick={() => setPhotoToDelete(selectedPhoto.id)}
+              style={{ marginTop: '15px', padding: '10px 20px', background: '#ff7675', color: 'white', border: 'none', borderRadius: '20px', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
+            >
+              🗑️ Xóa Ảnh
+            </button>
+          </div>
         </div>
       ) : (
         <>
@@ -127,6 +151,14 @@ const PhotoAlbumModal = ({ isOpen, onClose, photos, setPhotos, setIsStarrySpaceO
           </div>
         </>
       )}
+      
+      <ConfirmDialog 
+        isOpen={!!photoToDelete}
+        title="Xác nhận xóa"
+        message="Bạn có chắc muốn xóa bức ảnh này vĩnh viễn không?"
+        onConfirm={handleDeletePhoto}
+        onCancel={() => setPhotoToDelete(null)}
+      />
     </Modal>
   );
 };

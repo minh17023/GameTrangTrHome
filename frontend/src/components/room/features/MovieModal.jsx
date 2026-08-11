@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import Modal from '../../common/Modal';
+import ConfirmDialog from '../../common/ConfirmDialog';
 import { addMovie, updateMovie, deleteMovie } from '../../../api/movieApi';
 import { toast } from 'react-hot-toast';
 
 const MovieModal = ({ isOpen, onClose, movies, setMovies, user, socket }) => {
   const [isMovieFormOpen, setIsMovieFormOpen] = useState(false);
   const [movieForm, setMovieForm] = useState({ id: null, title: '', date: '', time: '' });
+  const [movieToDelete, setMovieToDelete] = useState(null);
 
   const handleOpenMovieForm = (movie = null) => {
     if (movie) {
@@ -35,12 +37,12 @@ const MovieModal = ({ isOpen, onClose, movies, setMovies, user, socket }) => {
     } catch (err) {}
   };
 
-  const handleDeleteMovie = async (id) => {
-    if (window.confirm("Xóa vé phim này?")) {
-      await deleteMovie(id);
-      setMovies(movies.filter(m => m.id !== id));
-      socket.emit('data_changed', { type: 'movie', roomId: user.room_id });
-    }
+  const handleDeleteMovie = async () => {
+    if (!movieToDelete) return;
+    await deleteMovie(movieToDelete);
+    setMovies(movies.filter(m => m.id !== movieToDelete));
+    setMovieToDelete(null);
+    socket.emit('data_changed', { type: 'movie', roomId: user.room_id });
   };
 
   const handleClose = () => {
@@ -62,7 +64,7 @@ const MovieModal = ({ isOpen, onClose, movies, setMovies, user, socket }) => {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <button className="action-btn" onClick={() => handleOpenMovieForm(movie)}>✏️</button>
-                  <button className="action-btn" onClick={() => handleDeleteMovie(movie.id)}>🗑️</button>
+                  <button className="action-btn" onClick={() => setMovieToDelete(movie.id)}>🗑️</button>
                 </div>
               </div>
             ))}
@@ -97,6 +99,14 @@ const MovieModal = ({ isOpen, onClose, movies, setMovies, user, socket }) => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog 
+        isOpen={!!movieToDelete}
+        title="Xác nhận xóa"
+        message="Bạn có chắc muốn xóa vé xem phim này không?"
+        onConfirm={handleDeleteMovie}
+        onCancel={() => setMovieToDelete(null)}
+      />
     </Modal>
   );
 };

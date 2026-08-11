@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import Modal from '../../common/Modal';
+import ConfirmDialog from '../../common/ConfirmDialog';
 import { addFridgeItem, updateFridgeItem, deleteFridgeItem } from '../../../api/fridgeApi';
 
 const FridgeModal = ({ isOpen, onClose, fridgeItems, setFridgeItems, user, socket }) => {
   const [newFood, setNewFood] = useState("");
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   const handleAddFood = async () => {
     if (!newFood.trim()) return;
@@ -26,12 +28,12 @@ const FridgeModal = ({ isOpen, onClose, fridgeItems, setFridgeItems, user, socke
     }
   };
 
-  const handleDeleteFood = async (id) => {
-    if (window.confirm("Bạn có chắc muốn xóa món này?")) {
-      await deleteFridgeItem(id);
-      setFridgeItems(fridgeItems.filter(f => f.id !== id));
-      socket.emit('data_changed', { type: 'fridge', roomId: user.room_id });
-    }
+  const handleDeleteFood = async () => {
+    if (!itemToDelete) return;
+    await deleteFridgeItem(itemToDelete);
+    setFridgeItems(fridgeItems.filter(f => f.id !== itemToDelete));
+    setItemToDelete(null);
+    socket.emit('data_changed', { type: 'fridge', roomId: user.room_id });
   };
 
   return (
@@ -41,7 +43,7 @@ const FridgeModal = ({ isOpen, onClose, fridgeItems, setFridgeItems, user, socke
           <span key={index} className="fridge-item">
             {item.name}
             <button className="action-btn" onClick={() => handleEditFood(item)}>✏️</button>
-            <button className="action-btn" onClick={() => handleDeleteFood(item.id)}>❌</button>
+            <button className="action-btn" onClick={() => setItemToDelete(item.id)}>❌</button>
           </span>
         ))}
       </div>
@@ -56,6 +58,13 @@ const FridgeModal = ({ isOpen, onClose, fridgeItems, setFridgeItems, user, socke
         />
         <button onClick={handleAddFood} style={{ padding: '8px 15px', background: 'var(--pastel-pink-dark)', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>Thêm</button>
       </div>
+      <ConfirmDialog 
+        isOpen={!!itemToDelete}
+        title="Xác nhận xóa"
+        message="Bạn có chắc muốn xóa món ăn này không?"
+        onConfirm={handleDeleteFood}
+        onCancel={() => setItemToDelete(null)}
+      />
     </Modal>
   );
 };
