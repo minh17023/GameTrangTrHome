@@ -126,7 +126,7 @@ const DraggableItem = ({ id, icon, label, initialX, initialY, dbPosition, onClic
       onDragStart={handleDragStart}
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
-      className="draggable-item-2d"
+      className="draggable-item-2d sparkle-effect"
     >
       <div className="item-icon-2d" style={{ fontSize: '4rem', pointerEvents: 'none' }}>
         {icon}
