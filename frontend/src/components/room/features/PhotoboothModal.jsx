@@ -1,11 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../../common/Modal';
 import { toast } from 'react-hot-toast';
+import { uploadFile } from '../../../api/uploadApi';
+import { createPhoto } from '../../../api/photoApi';
 
 const FRAMES = [
-  { id: 'pink', name: 'Kitty Pink', color: '#ffb6c1', border: '#ff69b4' },
-  { id: 'blue', name: 'Cinnamoroll Blue', color: '#aec6cf', border: '#87ceeb' },
-  { id: 'black', name: 'Kuromi Black', color: '#333', border: '#000' }
+  { id: 'pink', name: 'Kitty Pink', color: '#ffb6c1', border: '#ff69b4', decoration: '🎀' },
+  { id: 'blue', name: 'Cinnamoroll Blue', color: '#aec6cf', border: '#87ceeb', decoration: '☁️' },
+  { id: 'black', name: 'Kuromi Black', color: '#333', border: '#000', decoration: '💀' },
+  { id: 'sparkle', name: 'Anime Sparkle', color: '#f5f5dc', border: '#ffd700', decoration: '✨' },
+];
+
+const LAYOUTS = [
+  { id: 'strip-4', name: 'Dải 4 ảnh', slots: 4 },
+  { id: 'grid-2x2', name: 'Lưới 2x2', slots: 4 },
+  { id: 'strip-3', name: 'Dải 3 ảnh', slots: 3 },
+  { id: 'single', name: 'Ảnh Đơn', slots: 1 },
 ];
 
 const ICE_SERVERS = {
@@ -24,10 +34,12 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
   const [flash, setFlash] = useState(false);
   const [isCoupleMode, setIsCoupleMode] = useState(false);
   const [captureSequenceRunning, setCaptureSequenceRunning] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Editor state
   const [selectedFrame, setSelectedFrame] = useState(FRAMES[0]);
-  const [slots, setSlots] = useState([null, null, null, null]);
+  const [selectedLayout, setSelectedLayout] = useState(LAYOUTS[0]);
+  const [slots, setSlots] = useState(new Array(LAYOUTS[0].slots).fill(null));
   
   const videoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -45,7 +57,7 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
     return () => {
       isMounted.current = false;
       stopCamera();
-      endCall(); // Clean up RTC
+      endCall();
     };
   }, [isOpen, step]);
 
@@ -75,10 +87,8 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
       }
     };
 
-    // --- WebRTC Logic ---
     const handleCallIncoming = async (data) => {
       const { offer } = data;
-      // Kích hoạt chế độ chụp chung tự động nếu đang tắt
       if (!isCoupleMode) setIsCoupleMode(true);
       
       const pc = createPeerConnection();
@@ -141,7 +151,7 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
 
   const startCamera = async () => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setStream(mediaStream);
       streamRef.current = mediaStream;
       if (videoRef.current) {
@@ -167,8 +177,8 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peerConnection.current = pc;
     
-    if (stream) {
-      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => pc.addTrack(track, streamRef.current));
     }
     
     pc.ontrack = (event) => {
@@ -199,10 +209,7 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
     setIsCoupleMode(checked);
     
     if (checked) {
-      // Báo notification cho người kia
       socket.emit('data_changed', { type: 'photobooth_invite', roomId: user?.room_id });
-      
-      // Gọi WebRTC
       try {
         const pc = createPeerConnection();
         const offer = await pc.createOffer();
@@ -226,7 +233,7 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
     
     setCaptureSequenceRunning(true);
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < selectedLayout.slots; i++) {
       if (!isMounted.current) break;
       
       for (let c = 5; c > 0; c--) {
@@ -275,21 +282,24 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
     setCapturedPhotos(prev => [...prev, dataUrl]);
     
     if (isCoupleMode || isRemoteTriggered) {
-      // Gửi ảnh HQ (từ canvas local) sang máy đối tác qua Socket để đảm bảo chất lượng
       socket.emit('photobooth_share', { roomId: user?.room_id, photo: dataUrl, userName: user?.name });
     }
   };
 
   const handleNextStep = () => {
-    const requiredPhotos = isCoupleMode ? 8 : 4;
+    const requiredPhotos = isCoupleMode ? selectedLayout.slots * 2 : selectedLayout.slots;
     if (capturedPhotos.length < requiredPhotos) {
       toast.error(`Vui lòng đợi chụp đủ ${requiredPhotos} tấm ảnh!`);
       return;
     }
     setStep('editor');
-    // Keep camera running if we want to go back? Currently we stop it to save resources.
     stopCamera();
-    endCall(); // End call when entering editor
+    endCall();
+  };
+
+  const handleLayoutChange = (layout) => {
+    setSelectedLayout(layout);
+    setSlots(new Array(layout.slots).fill(null));
   };
 
   const handleDragStart = (e, photoIndex) => {
@@ -314,63 +324,133 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
     setSlots(newSlots);
   };
 
-  const downloadImage = () => {
-    if (slots.some(s => s === null)) {
-      toast.error("Vui lòng điền đủ ảnh vào các ô trống!");
-      return;
-    }
-    const canvas = exportCanvasRef.current;
+  const drawToCanvas = async (canvas) => {
     const ctx = canvas.getContext('2d');
     const slotWidth = 300, slotHeight = 200, padding = 20;
     
-    canvas.width = slotWidth + padding * 2;
-    canvas.height = (slotHeight + padding) * 4 + padding * 3; 
+    if (selectedLayout.id === 'strip-4' || selectedLayout.id === 'strip-3') {
+      canvas.width = slotWidth + padding * 2;
+      canvas.height = (slotHeight + padding) * selectedLayout.slots + padding * 3; 
+    } else if (selectedLayout.id === 'grid-2x2') {
+      canvas.width = slotWidth * 2 + padding * 3;
+      canvas.height = slotHeight * 2 + padding * 3 + 80; // space for title
+    } else if (selectedLayout.id === 'single') {
+      canvas.width = slotWidth + padding * 2;
+      canvas.height = slotHeight + padding * 2 + 60;
+    }
     
+    // Nền & Viền
     ctx.fillStyle = selectedFrame.color;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = selectedFrame.border;
     ctx.lineWidth = 10;
     ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
     
-    slots.forEach((photoData, idx) => {
-      const img = new Image();
-      img.src = photoData;
-      img.onload = () => {
-        const x = padding;
-        const y = padding + idx * (slotHeight + padding);
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(x - 5, y - 5, slotWidth + 10, slotHeight + 10);
-        ctx.drawImage(img, x, y, slotWidth, slotHeight);
-        
-        if (idx === 3) {
-          ctx.fillStyle = selectedFrame.id === 'black' ? '#fff' : '#000';
-          ctx.font = 'bold 24px Quicksand';
-          ctx.textAlign = 'center';
-          ctx.fillText('Hello Kitty House', canvas.width / 2, canvas.height - 30);
+    // Hoa văn / Emoji trang trí góc
+    ctx.font = '40px sans-serif';
+    ctx.fillText(selectedFrame.decoration, 15, 50);
+    ctx.fillText(selectedFrame.decoration, canvas.width - 55, 50);
+    ctx.fillText(selectedFrame.decoration, 15, canvas.height - 20);
+    ctx.fillText(selectedFrame.decoration, canvas.width - 55, canvas.height - 20);
+    
+    // Load ảnh và vẽ
+    await Promise.all(slots.map((photoData, idx) => {
+      return new Promise((resolve) => {
+        if (!photoData) { resolve(); return; }
+        const img = new Image();
+        img.src = photoData;
+        img.onload = () => {
+          let x = padding;
+          let y = padding;
           
-          const link = document.createElement('a');
-          link.download = `photobooth-${Date.now()}.png`;
-          link.href = canvas.toDataURL('image/png');
-          link.click();
-          toast.success("Đã tải ảnh về máy!");
-        }
-      };
-    });
+          if (selectedLayout.id === 'strip-4' || selectedLayout.id === 'strip-3') {
+            y = padding + idx * (slotHeight + padding);
+          } else if (selectedLayout.id === 'grid-2x2') {
+            x = padding + (idx % 2) * (slotWidth + padding);
+            y = padding + Math.floor(idx / 2) * (slotHeight + padding);
+          } else if (selectedLayout.id === 'single') {
+             // x,y already padding
+          }
+          
+          // Vẽ nền trắng viền ảnh
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(x - 5, y - 5, slotWidth + 10, slotHeight + 10);
+          ctx.drawImage(img, x, y, slotWidth, slotHeight);
+          resolve();
+        };
+      });
+    }));
+    
+    // Vẽ Tiêu đề (Brand)
+    ctx.fillStyle = selectedFrame.id === 'black' ? '#fff' : '#000';
+    ctx.font = 'bold 28px Quicksand';
+    ctx.textAlign = 'center';
+    ctx.fillText('Hello Kitty House', canvas.width / 2, canvas.height - 35);
   };
 
-  const requiredPhotos = isCoupleMode ? 8 : 4;
+  const downloadImage = async () => {
+    if (slots.some(s => s === null)) {
+      toast.error("Vui lòng điền đủ ảnh vào các ô trống!");
+      return;
+    }
+    const canvas = exportCanvasRef.current;
+    await drawToCanvas(canvas);
+    
+    const link = document.createElement('a');
+    link.download = `photobooth-${selectedLayout.id}-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast.success("Đã tải ảnh về máy!");
+  };
+
+  const saveToAlbum = async () => {
+    if (slots.some(s => s === null)) {
+      toast.error("Vui lòng điền đủ ảnh vào các ô trống!");
+      return;
+    }
+    setIsSaving(true);
+    const toastId = toast.loading("Đang lưu vào Album...");
+    try {
+      const canvas = exportCanvasRef.current;
+      await drawToCanvas(canvas);
+      
+      canvas.toBlob(async (blob) => {
+        try {
+          const file = new File([blob], `photobooth-${Date.now()}.png`, { type: 'image/png' });
+          const uploadRes = await uploadFile(file, 'ptb_'); // Send prefix
+          
+          if (uploadRes.url) {
+             await createPhoto(uploadRes.url);
+             toast.success("Đã lưu vào Album thành công!", { id: toastId });
+             socket.emit('data_changed', { type: 'photo', roomId: user?.room_id });
+          } else {
+             toast.error("Lỗi khi tải ảnh lên!", { id: toastId });
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error("Lỗi khi lưu ảnh!", { id: toastId });
+        } finally {
+          setIsSaving(false);
+        }
+      }, 'image/png');
+    } catch (err) {
+      toast.error("Lỗi vẽ Canvas!", { id: toastId });
+      setIsSaving(false);
+    }
+  };
+
+  const requiredPhotos = isCoupleMode ? selectedLayout.slots * 2 : selectedLayout.slots;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Photobooth Máy Ảnh" width="1100px">
-      <div style={{ display: 'flex', flexDirection: 'column', height: '75vh', background: '#fff', borderRadius: '10px', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '80vh', background: '#fff', borderRadius: '10px', overflow: 'hidden' }}>
         
         {step === 'capture' && (
           <div style={{ display: 'flex', flex: 1, width: '100%', height: '100%' }}>
-            {/* Vùng Camera (Chia đôi trái/phải nếu Couple Mode có remoteStream) */}
+            {/* Vùng Camera (Chia đôi trái/phải nếu Couple Mode) */}
             <div style={{ flex: 2, background: '#000', position: 'relative', display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
-              
               <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleX(-1)' }} />
+                <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleX(-1)' }} />
                 {(isCoupleMode && remoteStream) && (
                   <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '15px', fontSize: '0.8rem', zIndex: 10 }}>Bạn</div>
                 )}
@@ -396,13 +476,12 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'white', zIndex: 10, opacity: 0.8 }} />
               )}
               
-              {/* Nút chụp luôn ở giữa */}
               <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 6 }}>
                 <button 
                   onClick={startSequence} 
                   disabled={captureSequenceRunning} 
                   style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', border: '5px solid #ff69b4', cursor: captureSequenceRunning ? 'not-allowed' : 'pointer', boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }} 
-                  title="Bấm 1 lần chụp 4 tấm">
+                  title={`Bấm 1 lần chụp ${selectedLayout.slots} tấm`}>
                 </button>
               </div>
               
@@ -414,7 +493,22 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
             </div>
             
             {/* Khay ảnh tạm (Sidebar) */}
-            <div style={{ width: '300px', background: '#f8f8f8', borderLeft: '1px solid #eee', padding: '20px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ width: '320px', background: '#f8f8f8', borderLeft: '1px solid #eee', padding: '20px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ marginBottom: '15px' }}>
+                <h3 style={{ margin: '0 0 10px 0', color: '#ff69b4', fontSize: '1.2rem' }}>Cài đặt Tỉ lệ Khung</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
+                  {LAYOUTS.map(layout => (
+                    <button 
+                       key={layout.id} 
+                       onClick={() => handleLayoutChange(layout)}
+                       disabled={captureSequenceRunning}
+                       style={{ padding: '8px', background: selectedLayout.id === layout.id ? '#ff69b4' : '#e0e0e0', color: selectedLayout.id === layout.id ? 'white' : '#333', border: 'none', borderRadius: '5px', cursor: captureSequenceRunning ? 'not-allowed' : 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                      {layout.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3 style={{ margin: 0, color: '#ff69b4', fontSize: '1.2rem' }}>Khay Ảnh ({capturedPhotos.length}/{requiredPhotos})</h3>
                 <label style={{ display: 'flex', alignItems: 'center', cursor: captureSequenceRunning ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}>
@@ -430,7 +524,7 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
                   </div>
                 ))}
                 {capturedPhotos.length === 0 && (
-                  <div style={{ gridColumn: 'span 2', textAlign: 'center', color: '#999', marginTop: '50px' }}>Nhấn nút chụp ở dưới để bắt đầu chuỗi 4 ảnh!</div>
+                  <div style={{ gridColumn: 'span 2', textAlign: 'center', color: '#999', marginTop: '50px' }}>Chọn tỉ lệ khung ở trên và nhấn nút chụp để bắt đầu!</div>
                 )}
               </div>
               
@@ -446,7 +540,7 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
 
         {step === 'editor' && (
           <div style={{ display: 'flex', flex: 1, width: '100%', height: '100%' }}>
-            <div style={{ width: '300px', background: '#f8f8f8', borderRight: '1px solid #eee', padding: '20px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            <div style={{ width: '320px', background: '#f8f8f8', borderRight: '1px solid #eee', padding: '20px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
               <h3 style={{ margin: '0 0 15px 0', color: '#ff69b4', fontSize: '1.1rem' }}>1. Kéo ảnh vào khung</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
                 {capturedPhotos.map((p, idx) => (
@@ -461,28 +555,46 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
                 ))}
               </div>
               
-              <h3 style={{ margin: '15px 0', color: '#ff69b4', fontSize: '1.1rem' }}>2. Chọn viền</h3>
+              <h3 style={{ margin: '15px 0', color: '#ff69b4', fontSize: '1.1rem' }}>2. Chọn viền (Frame Anime)</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {FRAMES.map(f => (
                   <button 
                     key={f.id} 
                     onClick={() => setSelectedFrame(f)}
-                    style={{ padding: '10px', background: f.color, color: f.id === 'black' ? 'white' : 'black', border: selectedFrame.id === f.id ? `3px solid ${f.border}` : 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                    style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: f.color, color: f.id === 'black' ? 'white' : 'black', border: selectedFrame.id === f.id ? `3px solid ${f.border}` : 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
                   >
-                    {f.name}
+                    <span>{f.name}</span>
+                    <span style={{ fontSize: '1.2rem' }}>{f.decoration}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div style={{ flex: 1, background: '#e0e0e0', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', overflowY: 'auto' }}>
-              <div style={{ width: '250px', background: selectedFrame.color, padding: '15px', border: `5px solid ${selectedFrame.border}`, borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '0 10px 20px rgba(0,0,0,0.2)' }}>
+            <div style={{ flex: 1, background: '#e0e0e0', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', overflowY: 'auto', position: 'relative' }}>
+              {/* Dynamic Editor Canvas Preview */}
+              <div style={{ 
+                  background: selectedFrame.color, padding: '15px', 
+                  border: `5px solid ${selectedFrame.border}`, borderRadius: '10px', 
+                  display: selectedLayout.id === 'grid-2x2' ? 'grid' : 'flex', 
+                  flexDirection: selectedLayout.id !== 'grid-2x2' ? 'column' : 'row',
+                  gridTemplateColumns: selectedLayout.id === 'grid-2x2' ? '1fr 1fr' : 'none',
+                  gap: '10px', boxShadow: '0 10px 20px rgba(0,0,0,0.2)',
+                  width: selectedLayout.id === 'grid-2x2' ? '500px' : '250px',
+                  position: 'relative'
+                }}>
+                
+                {/* Anime Decorative Stickers using absolute positioning */}
+                <span style={{ position: 'absolute', top: '5px', left: '5px', fontSize: '24px', zIndex: 5 }}>{selectedFrame.decoration}</span>
+                <span style={{ position: 'absolute', top: '5px', right: '5px', fontSize: '24px', zIndex: 5 }}>{selectedFrame.decoration}</span>
+                <span style={{ position: 'absolute', bottom: '5px', left: '5px', fontSize: '24px', zIndex: 5 }}>{selectedFrame.decoration}</span>
+                <span style={{ position: 'absolute', bottom: '5px', right: '5px', fontSize: '24px', zIndex: 5 }}>{selectedFrame.decoration}</span>
+
                 {slots.map((slot, idx) => (
                   <div 
                     key={idx} 
                     onDrop={(e) => handleDrop(e, idx)} 
                     onDragOver={handleDragOver}
-                    style={{ width: '100%', aspectRatio: '3/2', background: 'rgba(255,255,255,0.5)', border: '2px dashed rgba(0,0,0,0.2)', position: 'relative', overflow: 'hidden' }}
+                    style={{ width: '100%', aspectRatio: '3/2', background: 'rgba(255,255,255,0.5)', border: '2px dashed rgba(0,0,0,0.2)', position: 'relative', overflow: 'hidden', zIndex: 2 }}
                   >
                     {slot ? (
                       <>
@@ -490,16 +602,18 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
                         <button onClick={() => removeSlot(idx)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(255,0,0,0.7)', color: 'white', border: 'none', borderRadius: '50%', width: '25px', height: '25px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✖</button>
                       </>
                     ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontWeight: 'bold', fontSize: '0.9rem' }}>Thả ảnh vào</div>
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontWeight: 'bold', fontSize: '0.9rem' }}>Thả ảnh</div>
                     )}
                   </div>
                 ))}
-                <div style={{ textAlign: 'center', color: selectedFrame.id==='black'?'white':'#333', fontWeight: 'bold', fontSize: '1rem', marginTop: '5px' }}>Hello Kitty House</div>
+                
+                <div style={{ gridColumn: selectedLayout.id === 'grid-2x2' ? 'span 2' : 'auto', textAlign: 'center', color: selectedFrame.id==='black'?'white':'#333', fontWeight: 'bold', fontSize: '1rem', marginTop: '5px', zIndex: 2 }}>Hello Kitty House</div>
               </div>
               
-              <div style={{ marginTop: '20px', display: 'flex', gap: '15px' }}>
+              <div style={{ marginTop: '25px', display: 'flex', gap: '15px' }}>
                 <button onClick={() => { setStep('capture'); startCamera(); if(isCoupleMode) handleToggleCoupleMode({target:{checked:true}}) }} style={{ padding: '10px 20px', background: '#ccc', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Chụp thêm</button>
-                <button onClick={downloadImage} style={{ padding: '10px 20px', background: '#ff69b4', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>⬇ Tải Ảnh Xuống</button>
+                <button onClick={downloadImage} style={{ padding: '10px 20px', background: '#3498db', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>⬇ Tải Ảnh Xuống</button>
+                <button onClick={saveToAlbum} disabled={isSaving} style={{ padding: '10px 20px', background: '#ff69b4', color: 'white', border: 'none', borderRadius: '8px', cursor: isSaving ? 'wait' : 'pointer', fontWeight: 'bold' }}>{isSaving ? '⏳ Đang lưu...' : '💖 Lưu vào Album'}</button>
               </div>
             </div>
           </div>

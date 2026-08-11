@@ -34,6 +34,7 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
   const localStreamRef = useRef(null);
   const messagesEndRef = useRef(null);
   const callStateRef = useRef(callState);
+  const pendingIceCandidatesRef = useRef([]);
 
   useEffect(() => {
     callStateRef.current = callState;
@@ -63,6 +64,13 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
         try {
           await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
           setCallState('connected');
+          
+          for (const candidate of pendingIceCandidatesRef.current) {
+            try {
+              await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (e) { console.error("Lỗi addIceCandidate buffer:", e); }
+          }
+          pendingIceCandidatesRef.current = [];
         } catch (err) {
           console.error("Lỗi setRemoteDescription:", err);
         }
@@ -70,12 +78,15 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
     };
 
     const handleIceCandidate = async ({ candidate }) => {
-      if (peerConnectionRef.current && candidate) {
+      if (!candidate) return;
+      if (peerConnectionRef.current && peerConnectionRef.current.remoteDescription) {
         try {
           await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
         } catch (e) {
           console.error("Lỗi addIceCandidate", e);
         }
+      } else {
+        pendingIceCandidatesRef.current.push(candidate);
       }
     };
 
@@ -190,6 +201,7 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
       
       setIsVideoCall(video);
       setCallState('calling');
+      pendingIceCandidatesRef.current = [];
       
       peerConnectionRef.current = new RTCPeerConnection(ICE_SERVERS);
       
@@ -243,6 +255,14 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
       };
 
       await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+      
+      for (const candidate of pendingIceCandidatesRef.current) {
+        try {
+          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) { console.error("Lỗi addIceCandidate buffer:", e); }
+      }
+      pendingIceCandidatesRef.current = [];
+
       const answer = await peerConnectionRef.current.createAnswer();
       await peerConnectionRef.current.setLocalDescription(answer);
 
@@ -252,6 +272,7 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
     } catch (err) {
       console.error(err);
       toast.error("Không thể truy cập Camera/Microphone");
+      socket.emit('end_call', user.room_id);
       endCallLocally();
     }
   };
@@ -275,6 +296,7 @@ const Messenger = ({ partner, isOnline, onClose, onMinimize }) => {
     
     setCallState('idle');
     setIncomingCall(null);
+    pendingIceCandidatesRef.current = [];
   };
 
   const handleEndCall = () => {

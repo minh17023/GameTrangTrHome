@@ -486,7 +486,7 @@ const MainRoom = () => {
         <>
           <DraggableItem icon="💌" label="Hòm Thư" initialX={400} initialY={500} dbPosition={itemPositions["Hòm Thư"]} onClick={() => setActiveModal("Thư")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
           <DraggableItem icon="🎧" label="Máy Nghe Nhạc" initialX={700} initialY={600} dbPosition={itemPositions["Máy Nghe Nhạc"]} onClick={() => setActiveModal("Máy Nghe Nhạc")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
-          <DraggableItem icon="📷" label="Máy Ảnh" initialX={550} initialY={400} dbPosition={itemPositions["Máy Ảnh"]} onClick={() => setActiveModal("Máy Ảnh")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
+          <DraggableItem icon="🖼️" label="Máy Ảnh" initialX={550} initialY={400} dbPosition={itemPositions["Máy Ảnh"]} onClick={() => setActiveModal("Máy Ảnh")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
         </>
       )}
 

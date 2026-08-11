@@ -4,7 +4,8 @@ class UploadController {
   async uploadFile(req, res) {
     try {
       const file = req.file; // File được lấy từ multer
-      const publicUrl = await UploadService.uploadFile(file);
+      const { prefix } = req.body;
+      const publicUrl = await UploadService.uploadFile(file, prefix || '');
       res.json({ url: publicUrl });
     } catch (error) {
       res.status(500).json({ error: error.message });

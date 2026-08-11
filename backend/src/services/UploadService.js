@@ -2,14 +2,14 @@ import { supabase } from '../config/db.js';
 import crypto from 'crypto';
 
 class UploadService {
-  async uploadFile(file) {
+  async uploadFile(file, prefix = '') {
     if (!file) throw new Error('Không tìm thấy file để upload');
 
     // Tạo tên file độc nhất để không bị trùng
     const ext = file.originalname.split('.').pop();
     const isAudio = file.mimetype.startsWith('audio/');
     const folder = isAudio ? 'music' : 'images';
-    const fileName = `${folder}/${crypto.randomUUID()}.${ext}`;
+    const fileName = `${folder}/${prefix}${crypto.randomUUID()}.${ext}`;
 
     const { data, error } = await supabase.storage
       .from('media')

@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 const PhotoAlbumModal = ({ isOpen, onClose, photos, setPhotos, setIsStarrySpaceOpen, user, socket }) => {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [activeTab, setActiveTab] = useState('normal'); // 'normal' | 'ptb'
 
   const handleUploadPhoto = async (e) => {
     const file = e.target.files[0];
@@ -39,8 +40,13 @@ const PhotoAlbumModal = ({ isOpen, onClose, photos, setPhotos, setIsStarrySpaceO
     setSelectedPhoto(null);
   };
 
+  const normalPhotos = photos.filter(p => !p.url.includes('/ptb_'));
+  const ptbPhotos = photos.filter(p => p.url.includes('/ptb_'));
+  
+  const displayPhotos = activeTab === 'normal' ? normalPhotos : ptbPhotos;
+
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="📷 Album Tình Yêu" width="800px">
+    <Modal isOpen={isOpen} onClose={handleClose} title="🖼️ Album Tình Yêu" width="800px">
       {selectedPhoto ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
           <button 
@@ -63,11 +69,31 @@ const PhotoAlbumModal = ({ isOpen, onClose, photos, setPhotos, setIsStarrySpaceO
         </div>
       ) : (
         <>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', borderBottom: '2px solid #eee', marginBottom: '15px' }}>
+             <button 
+                onClick={() => setActiveTab('normal')}
+                style={{ background: 'none', border: 'none', padding: '10px 20px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: activeTab === 'normal' ? '3px solid #ff69b4' : '3px solid transparent', color: activeTab === 'normal' ? '#ff69b4' : '#666' }}
+             >
+                📷 Kỷ Niệm
+             </button>
+             <button 
+                onClick={() => setActiveTab('ptb')}
+                style={{ background: 'none', border: 'none', padding: '10px 20px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: activeTab === 'ptb' ? '3px solid #ff69b4' : '3px solid transparent', color: activeTab === 'ptb' ? '#ff69b4' : '#666' }}
+             >
+                📸 Ảnh Photobooth
+             </button>
+          </div>
+          
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-            <label style={{ padding: '10px 15px', background: 'var(--pastel-pink)', color: '#000', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-              {isUploadingPhoto ? 'Đang tải...' : '➕ Thêm Ảnh'}
-              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadPhoto} disabled={isUploadingPhoto} />
-            </label>
+            {activeTab === 'normal' ? (
+              <label style={{ padding: '10px 15px', background: 'var(--pastel-pink)', color: '#000', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                {isUploadingPhoto ? 'Đang tải...' : '➕ Thêm Ảnh'}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadPhoto} disabled={isUploadingPhoto} />
+              </label>
+            ) : (
+              <div style={{ fontStyle: 'italic', color: '#888', alignSelf: 'center' }}>Những tấm ảnh được chụp và lưu từ máy Photobooth.</div>
+            )}
+            
             <button 
               onClick={() => { handleClose(); setIsStarrySpaceOpen(true); }}
               style={{ padding: '10px 15px', background: '#000', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
@@ -76,8 +102,8 @@ const PhotoAlbumModal = ({ isOpen, onClose, photos, setPhotos, setIsStarrySpaceO
             </button>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '15px', maxHeight: '60vh', overflowY: 'auto', padding: '10px' }}>
-            {photos.length === 0 ? <p style={{textAlign: 'center', color: '#999', gridColumn: '1 / -1'}}>Chưa có bức ảnh nào...</p> : photos.map(photo => (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '15px', maxHeight: '55vh', overflowY: 'auto', padding: '10px' }}>
+            {displayPhotos.length === 0 ? <p style={{textAlign: 'center', color: '#999', gridColumn: '1 / -1'}}>Chưa có bức ảnh nào...</p> : displayPhotos.map(photo => (
               <div 
                 key={photo.id} 
                 style={{ position: 'relative', width: '100%', paddingBottom: '100%', cursor: 'pointer', transition: 'transform 0.2s' }}
