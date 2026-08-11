@@ -99,6 +99,36 @@ io.on('connection', (socket) => {
     if (roomId) socket.to(roomId).emit('sync_video', data);
   });
 
+  // Photobooth
+  socket.on('photobooth_sync', (data) => {
+    const { roomId, count } = data;
+    if (roomId) socket.to(roomId).emit('photobooth_countdown', { count });
+  });
+
+  socket.on('photobooth_share', (data) => {
+    const { roomId, photo, userName } = data;
+    if (roomId) socket.to(roomId).emit('photobooth_photo', { photo, userName });
+  });
+
+  socket.on('photobooth_call', (data) => {
+    const { roomId, offer } = data;
+    if (roomId) socket.to(roomId).emit('photobooth_call', data);
+  });
+
+  socket.on('photobooth_answer', (data) => {
+    const { roomId, answer } = data;
+    if (roomId) socket.to(roomId).emit('photobooth_answer', data);
+  });
+
+  socket.on('photobooth_ice', (data) => {
+    const { roomId, candidate } = data;
+    if (roomId) socket.to(roomId).emit('photobooth_ice', data);
+  });
+
+  socket.on('photobooth_end', (roomId) => {
+    if (roomId) socket.to(roomId).emit('photobooth_end');
+  });
+
   // WebRTC Signaling
   socket.on('call_user', (data) => {
     const { roomId, callerId, offer, isVideo } = data;

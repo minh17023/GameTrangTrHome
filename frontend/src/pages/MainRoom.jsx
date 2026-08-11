@@ -27,6 +27,7 @@ import MusicPlayerModal from '../components/room/features/MusicPlayerModal';
 import PhotoAlbumModal from '../components/room/features/PhotoAlbumModal';
 import TVModal from '../components/room/features/TVModal';
 import PetModal from '../components/room/features/PetModal';
+import PhotoboothModal from '../components/room/features/PhotoboothModal';
 import { soundFx } from '../utils/audioUtils';
 
 const MainRoom = () => {
@@ -125,6 +126,9 @@ const MainRoom = () => {
         if (data.type === 'letter') {
           toast('Bạn có thư mới từ người ấy! 💌', { icon: '🧑‍🤝‍🧑', duration: 5000 });
         }
+      }
+      if (data.type === 'photobooth_invite') {
+        toast('Người yêu đang rủ bạn chụp chung Photobooth! Hãy mở Máy Ảnh lên!', { icon: '📸', duration: 10000 });
       }
       if (data.type === 'pet_floor_changed') {
         setPetFloor(data.floor);
@@ -473,6 +477,7 @@ const MainRoom = () => {
           <DraggableItem icon="📺" label="Tivi" initialX={200} initialY={400} dbPosition={itemPositions["Tivi"]} onClick={() => { setActiveModal("Tivi"); socket.emit('sync_tv_state', { roomId: user.room_id, action: 'open' }); }} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
           <DraggableItem icon="🧊" label="Tủ Lạnh" initialX={800} initialY={200} dbPosition={itemPositions["Tủ Lạnh"]} onClick={() => setActiveModal("Tủ Lạnh")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
           <DraggableItem icon="📱" label="Điện Thoại" initialX={700} initialY={500} dbPosition={itemPositions["Điện Thoại"]} onClick={() => setActiveModal("Điện Thoại")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
+          <DraggableItem icon="📸" label="Photobooth" initialX={100} initialY={200} dbPosition={itemPositions["Photobooth"]} onClick={() => setActiveModal("Photobooth")} onPositionChange={handleLocalItemMoved} roomId={user.room_id} />
         </>
       )}
 
@@ -579,6 +584,13 @@ const MainRoom = () => {
 
       <TVModal 
         isOpen={activeModal === "Tivi"} 
+        onClose={() => setActiveModal(null)} 
+        user={user} 
+        socket={socket} 
+      />
+
+      <PhotoboothModal 
+        isOpen={activeModal === "Photobooth"} 
         onClose={() => setActiveModal(null)} 
         user={user} 
         socket={socket} 
