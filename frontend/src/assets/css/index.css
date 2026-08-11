@@ -319,14 +319,19 @@ input, textarea, select {
     gap: 15px;
     position: relative !important;
   }
-  .tv-nav-top {
-    justify-content: space-between;
+  .tv-nav-left {
+    flex-direction: column;
     width: 100%;
+    gap: 10px !important;
+  }
+  .tv-nav-right {
+    width: 100%;
+    justify-content: space-between;
   }
   .tv-nav-menu {
     flex-wrap: wrap;
     gap: 10px;
-    justify-content: space-between;
+    justify-content: center;
     width: 100%;
   }
   .tv-logo {
@@ -341,11 +346,7 @@ input, textarea, select {
     grid-template-columns: repeat(2, 1fr) !important;
   }
   .tv-close-btn {
-    position: static !important;
     font-size: 1.2rem !important;
-  }
-  .modal-content {
-    padding: 0 !important;
   }
   .tv-content {
     padding-top: 20px !important;
@@ -361,5 +362,28 @@ input, textarea, select {
   }
   .nav-item {
     font-size: 0.9rem;
+  }
+  
+  /* Photobooth Responsive */
+  .ptb-container {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow-y: auto !important;
+  }
+  .ptb-camera-area {
+    flex-direction: column !important;
+    min-height: 50vh;
+  }
+  .ptb-sidebar {
+    width: 100% !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: 1px solid #eee;
+    padding: 10px !important;
+  }
+  .ptb-editor-preview {
+    transform: scale(0.8);
+    transform-origin: top center;
+    margin-bottom: -100px;
   }
 }

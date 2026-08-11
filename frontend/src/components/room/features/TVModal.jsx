@@ -148,11 +148,13 @@ const TVModal = ({ isOpen, onClose, user, socket }) => {
       fetchHomeMovies(newPage);
     } else if (view === 'filter') {
       handleFilter(activeFilterType, null, newPage);
+    } else if (view === 'search') {
+      handleSearch(null, newPage);
     }
   };
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
+  const handleSearch = async (e, page = 1) => {
+    if (e) e.preventDefault();
     if (!searchKeyword.trim()) {
       fetchHomeMovies(1);
       return;
@@ -161,12 +163,18 @@ const TVModal = ({ isOpen, onClose, user, socket }) => {
       setLoading(true);
       setView('search');
       setHeroMovie(null);
-      const res = await fetch(`${API_SEARCH}${encodeURIComponent(searchKeyword)}&limit=24`);
+      const res = await fetch(`${API_SEARCH}${encodeURIComponent(searchKeyword)}&limit=24&page=${page}`);
       const data = await res.json();
       if (data.status === 'success' && data.data?.items) {
         setSearchResults(data.data.items);
+        if (data.data.params?.pagination) {
+          setCurrentPage(data.data.params.pagination.currentPage);
+          setTotalPages(data.data.params.pagination.totalPages);
+        }
       } else {
         setSearchResults([]);
+        setCurrentPage(1);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error("Lỗi tìm kiếm:", err);
@@ -245,30 +253,33 @@ const TVModal = ({ isOpen, onClose, user, socket }) => {
       <div style={{ background: '#141414', color: 'white', height: '85vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
         
         {/* Navbar */}
-        <div className="tv-navbar">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }} className="tv-nav-top">
+        <div className="tv-navbar" style={{ boxSizing: 'border-box' }}>
+          <div className="tv-nav-left" style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
             <h1 className="tv-logo" style={{ color: '#e50914', margin: 0, fontSize: '1.8rem', cursor: 'pointer' }} onClick={() => fetchHomeMovies(1)}>NETFLIX</h1>
-            <button className="tv-close-btn" onClick={handleClose} style={{ background: 'transparent', color: 'white', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
+            
+            {!activeEpisode && !activeMovie && (
+              <div className="tv-nav-menu">
+                <div style={{ position: 'relative', cursor: 'pointer', fontWeight: 'bold' }} className="nav-item">Thể Loại ▾
+                  <div className="nav-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', left: 0, background: 'rgba(20,20,20,0.95)', border: '1px solid #333', padding: '15px', width: '500px', flexWrap: 'wrap', gap: '10px', borderRadius: '8px' }}>
+                    {categories.map(c => <span key={c._id} onClick={() => handleFilter('the-loai', c, 1)} style={{ padding: '8px', fontSize: '0.9rem', width: 'calc(25% - 10px)', textAlign: 'center' }}>{c.name}</span>)}
+                  </div>
+                </div>
+                <div style={{ position: 'relative', cursor: 'pointer', fontWeight: 'bold' }} className="nav-item">Quốc Gia ▾
+                  <div className="nav-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', left: 0, background: 'rgba(20,20,20,0.95)', border: '1px solid #333', padding: '15px', width: '500px', flexWrap: 'wrap', gap: '10px', borderRadius: '8px' }}>
+                    {countries.map(c => <span key={c._id} onClick={() => handleFilter('quoc-gia', c, 1)} style={{ padding: '8px', fontSize: '0.9rem', width: 'calc(25% - 10px)', textAlign: 'center' }}>{c.name}</span>)}
+                  </div>
+                </div>
+                <div style={{ position: 'relative', cursor: 'pointer', fontWeight: 'bold' }} className="nav-item">Năm ▾
+                  <div className="nav-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', left: 0, background: 'rgba(20,20,20,0.95)', border: '1px solid #333', padding: '15px', width: '300px', flexWrap: 'wrap', gap: '10px', borderRadius: '8px' }}>
+                    {years.map(y => <span key={y._id} onClick={() => handleFilter('nam', y, 1)} style={{ padding: '8px', fontSize: '0.9rem', width: 'calc(33% - 10px)', textAlign: 'center' }}>{y.name}</span>)}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          
-          {!activeEpisode && !activeMovie && (
-            <div className="tv-nav-menu">
-              <div style={{ position: 'relative', cursor: 'pointer', fontWeight: 'bold' }} className="nav-item">Thể Loại ▾
-                <div className="nav-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', left: '-50px', background: 'rgba(20,20,20,0.95)', border: '1px solid #333', padding: '15px', width: '600px', flexWrap: 'wrap', gap: '10px', borderRadius: '8px' }}>
-                  {categories.map(c => <span key={c._id} onClick={() => handleFilter('the-loai', c, 1)} style={{ padding: '8px', fontSize: '0.9rem', width: 'calc(25% - 10px)', textAlign: 'center' }}>{c.name}</span>)}
-                </div>
-              </div>
-              <div style={{ position: 'relative', cursor: 'pointer', fontWeight: 'bold' }} className="nav-item">Quốc Gia ▾
-                <div className="nav-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', left: '-50px', background: 'rgba(20,20,20,0.95)', border: '1px solid #333', padding: '15px', width: '600px', flexWrap: 'wrap', gap: '10px', borderRadius: '8px' }}>
-                  {countries.map(c => <span key={c._id} onClick={() => handleFilter('quoc-gia', c, 1)} style={{ padding: '8px', fontSize: '0.9rem', width: 'calc(25% - 10px)', textAlign: 'center' }}>{c.name}</span>)}
-                </div>
-              </div>
-              <div style={{ position: 'relative', cursor: 'pointer', fontWeight: 'bold' }} className="nav-item">Năm ▾
-                <div className="nav-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', left: '-50px', background: 'rgba(20,20,20,0.95)', border: '1px solid #333', padding: '15px', width: '400px', flexWrap: 'wrap', gap: '10px', borderRadius: '8px' }}>
-                  {years.map(y => <span key={y._id} onClick={() => handleFilter('nam', y, 1)} style={{ padding: '8px', fontSize: '0.9rem', width: 'calc(25% - 10px)', textAlign: 'center' }}>{y.name}</span>)}
-                </div>
-              </div>
 
+          <div className="tv-nav-right" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            {!activeEpisode && !activeMovie && (
               <form className="tv-search-form" onSubmit={handleSearch} style={{ display: 'flex', background: 'rgba(0,0,0,0.6)', border: '1px solid #fff', borderRadius: '4px', overflow: 'hidden' }}>
                 <input 
                   type="text" 
@@ -279,8 +290,9 @@ const TVModal = ({ isOpen, onClose, user, socket }) => {
                 />
                 <button type="submit" style={{ background: 'transparent', border: 'none', color: 'white', padding: '5px 10px', cursor: 'pointer' }}>🔍</button>
               </form>
-            </div>
-          )}
+            )}
+            <button className="tv-close-btn" onClick={handleClose} style={{ background: 'transparent', color: 'white', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
+          </div>
         </div>
 
         {/* Content Area */}
@@ -361,7 +373,7 @@ const TVModal = ({ isOpen, onClose, user, socket }) => {
                 )}
 
                 {/* Pagination */}
-                {view !== 'search' && totalPages > 1 && !loading && (
+                {totalPages > 1 && !loading && (
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px 0', gap: '20px' }}>
                     <button 
                       onClick={() => handlePageChange(currentPage - 1)}

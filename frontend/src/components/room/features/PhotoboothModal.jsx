@@ -443,12 +443,12 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Photobooth Máy Ảnh" width="1100px">
-      <div style={{ display: 'flex', flexDirection: 'column', height: '80vh', background: '#fff', borderRadius: '10px', overflow: 'hidden' }}>
+      <div className="ptb-container" style={{ display: 'flex', flexDirection: 'column', height: '80vh', background: '#fff', borderRadius: '10px', overflow: 'hidden' }}>
         
         {step === 'capture' && (
-          <div style={{ display: 'flex', flex: 1, width: '100%', height: '100%' }}>
+          <div className="ptb-container" style={{ display: 'flex', flex: 1, width: '100%', height: '100%' }}>
             {/* Vùng Camera (Chia đôi trái/phải nếu Couple Mode) */}
-            <div style={{ flex: 2, background: '#000', position: 'relative', display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
+            <div className="ptb-camera-area" style={{ flex: 2, background: '#000', position: 'relative', display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
               <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleX(-1)' }} />
                 {(isCoupleMode && remoteStream) && (
@@ -493,7 +493,7 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
             </div>
             
             {/* Khay ảnh tạm (Sidebar) */}
-            <div style={{ width: '320px', background: '#f8f8f8', borderLeft: '1px solid #eee', padding: '20px', display: 'flex', flexDirection: 'column' }}>
+            <div className="ptb-sidebar" style={{ width: '320px', background: '#f8f8f8', borderLeft: '1px solid #eee', padding: '20px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ marginBottom: '15px' }}>
                 <h3 style={{ margin: '0 0 10px 0', color: '#ff69b4', fontSize: '1.2rem' }}>Cài đặt Tỉ lệ Khung</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
@@ -539,8 +539,8 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
         )}
 
         {step === 'editor' && (
-          <div style={{ display: 'flex', flex: 1, width: '100%', height: '100%' }}>
-            <div style={{ width: '320px', background: '#f8f8f8', borderRight: '1px solid #eee', padding: '20px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          <div className="ptb-container" style={{ display: 'flex', flex: 1, width: '100%', height: '100%' }}>
+            <div className="ptb-sidebar" style={{ width: '320px', background: '#f8f8f8', borderRight: '1px solid #eee', padding: '20px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
               <h3 style={{ margin: '0 0 15px 0', color: '#ff69b4', fontSize: '1.1rem' }}>1. Kéo ảnh vào khung</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
                 {capturedPhotos.map((p, idx) => (
@@ -572,7 +572,7 @@ const PhotoboothModal = ({ isOpen, onClose, user, socket }) => {
 
             <div style={{ flex: 1, background: '#e0e0e0', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', overflowY: 'auto', position: 'relative' }}>
               {/* Dynamic Editor Canvas Preview */}
-              <div style={{ 
+              <div className="ptb-editor-preview" style={{ 
                   background: selectedFrame.color, padding: '15px', 
                   border: `5px solid ${selectedFrame.border}`, borderRadius: '10px', 
                   display: selectedLayout.id === 'grid-2x2' ? 'grid' : 'flex', 
