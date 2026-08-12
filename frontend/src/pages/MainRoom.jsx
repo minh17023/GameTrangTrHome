@@ -398,12 +398,22 @@ const MainRoom = () => {
   const handlePetAction = () => {
     if (!pet) return;
     
-    // Play sound
-    const audioUrl = pet.type === 'cat' 
-      ? 'https://actions.google.com/sounds/v1/animals/cat_meow_2.ogg' 
-      : 'https://actions.google.com/sounds/v1/animals/dog_barking.ogg';
-    const audio = new Audio(audioUrl);
-    audio.play().catch(e => console.log("Audio play prevented", e));
+    // Throttle sound to prevent spamming on drag
+    const now = Date.now();
+    if (!window.lastPetSoundTime || now - window.lastPetSoundTime > 1500) {
+      window.lastPetSoundTime = now;
+      const audioUrl = pet.type === 'cat' 
+        ? 'https://actions.google.com/sounds/v1/animals/cat_meow_2.ogg' 
+        : 'https://actions.google.com/sounds/v1/animals/dog_barking.ogg';
+      const audio = new Audio(audioUrl);
+      audio.play().catch(e => console.log("Audio play prevented", e));
+      
+      // Dừng âm thanh sau 0.8 giây để không bị kêu quá dài
+      setTimeout(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      }, 800);
+    }
     
     // Show speech bubble
     const messages = pet.type === 'cat' 
