@@ -32,7 +32,15 @@ const Profile = () => {
       
       // Connect to personal socket room for realtime updates
       socket.connect();
-      socket.emit('join_user_room', user.id);
+      
+      const joinUserRoom = () => {
+        socket.emit('join_user_room', user.id);
+      };
+
+      if (socket.connected) {
+        joinUserRoom();
+      }
+      socket.on('connect', joinUserRoom);
 
       socket.on('new_pair_request', () => {
         loadRequests(); // Tự động reload danh sách khi có lời mời mới
@@ -44,6 +52,7 @@ const Profile = () => {
       });
 
       return () => {
+        socket.off('connect', joinUserRoom);
         socket.off('new_pair_request');
         socket.off('pair_accepted');
       };

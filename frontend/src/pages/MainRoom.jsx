@@ -86,12 +86,20 @@ const MainRoom = () => {
     
     // Khởi động kết nối Socket.IO
     socket.connect();
-    if (user?.room_id) {
-      socket.emit('join_room', { roomId: user.room_id, userId: user.id });
+    
+    const joinRooms = () => {
+      if (user?.room_id) {
+        socket.emit('join_room', { roomId: user.room_id, userId: user.id });
+      }
+      if (user?.id) {
+        socket.emit('join_user_room', user.id);
+      }
+    };
+
+    if (socket.connected) {
+      joinRooms();
     }
-    if (user?.id) {
-      socket.emit('join_user_room', user.id);
-    }
+    socket.on('connect', joinRooms);
     
     // Online tracking
     const handleRoomOnlineUsers = (users) => {
@@ -240,6 +248,7 @@ const MainRoom = () => {
     socket.on('user_offline', handleUserOffline);
     
     return () => {
+      socket.off('connect', joinRooms);
       socket.off('data_changed', handleDataChanged);
       socket.off('music_action', handleMusicAction);
       socket.off('watch_movie', handleWatchMovie);
