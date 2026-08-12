@@ -228,7 +228,7 @@ server.listen(PORT, async () => {
                   <h2 style="color: #ff6b81;">Meo meo! 😿</h2>
                   <p>Đã nửa ngày rồi hai bạn chưa vào chơi với bé <b>${pet.name}</b> đó.</p>
                   <p>Bé đang rất đói và nhớ hai bạn! Đừng để đứt chuỗi tương tác nhé!</p>
-                  <a href="https://hello-kitty-house.onrender.com" style="display: inline-block; padding: 12px 25px; background: #ff4757; color: white; font-weight: bold; text-decoration: none; border-radius: 20px; margin-top: 15px;">Vào thăm bé ngay 🏃‍♂️💨</a>
+                  <a href="https://hellokitty-sigma.vercel.app/" style="display: inline-block; padding: 12px 25px; background: #ff4757; color: white; font-weight: bold; text-decoration: none; border-radius: 20px; margin-top: 15px;">Vào thăm bé ngay 🏃‍♂️💨</a>
                 </div>
               `;
               
